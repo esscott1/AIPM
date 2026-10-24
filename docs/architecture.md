@@ -153,6 +153,7 @@ Teams own their branches and worktrees, AIPM approves pull requests, and you app
 - Each team's `CLAUDE.md` and `memory.md` set its commit, branching, worktree and cleanup rules; AIPM does not override them.
 - A team asks for a PR with `request_pr`; the PM checks the team's report against the task and approves or sends it back with a reason.
 - AIPM is the source of truth for merges: a team cleans up only branches AIPM has reported as merged, so unmerged work is never deleted by a team.
+- Cleanup deletes local branches with `git branch -d` only, never `-D`. A branch `-d` refuses (squash- or rebase-merged, or with commits after the merge) is skipped and reported for me to delete. Team templates and the AIPM section `/adopt-project` adds carry the same rule.
 - **"Protect main" ruleset on GitHub** (GitHub Pro, so it applies to private repos): pull request required (0 approvals, since I can't approve my own PRs), no force pushes, no deleting `main`, and no bypass actors. Teams act through my GitHub sign-in, so allowing myself to bypass would let them bypass too. AIPM applies it to every repo it creates; adopted repos get it during `/adopt-project`.
 - Teams start in `plan` or `acceptEdits` mode; `bypassPermissions` is never used.
 - Each job has `max_turns` and a token cap from `projects.yaml`.
