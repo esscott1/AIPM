@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "fleet": {
+      "command": "uv",
+      "args": ["run", "--quiet", "--directory", "C:/src/AIPM", "python", "-m", "fleet.server"],
+      "env": { "UV_SYSTEM_CERTS": "1" }
+    }
+  }
+}
