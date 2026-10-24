@@ -16,7 +16,8 @@ Five phases. Each ends with a test that proves it works before the next starts. 
 - [x] Architecture document (`docs/architecture.md`)
 - [x] Phased roadmap (`docs/roadmap.md`)
 - [x] Design dashboard (`dashboard/aipm-board.html`)
-- [ ] `git init`, first commit, push to `esscott1/AIPM`
+- [x] `git init`, first commit, push to `esscott1/AIPM`
+- [x] "Protect main" ruleset active on `esscott1/AIPM`
 
 ## Phase 1 — Scaffold
 
@@ -49,6 +50,8 @@ Goal: one PM session can drive one adopted team end to end.
 
 - [ ] `templates/CLAUDE.md.tmpl`, `templates/memory.md.tmpl`, `templates/agents/` (spike, planner, researcher)
 - [ ] `create_project` with an approval stop before `gh repo create`
+- [ ] `create_project` applies the "Protect main" ruleset (PR required, no force push, no deletion, no bypass) to every new repo
+- [ ] `/adopt-project` offers to apply the same ruleset to adopted repos that lack it
 - [ ] `request_pr` / `approve_pr` / `reject_pr`; teams cannot open a PR without approval
 - [ ] `notify_merged` triggers team cleanup (delete merged branch and worktree) per the team's CLAUDE.md
 - [ ] **Exit test:** create otsconsulting, staff its team, run its kickoff task, open and merge its first PR, team cleans up
