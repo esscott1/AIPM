@@ -8,12 +8,23 @@ Phase 1 (scaffold). Work only on unchecked items in `docs/roadmap.md` under Phas
 
 ## Working rules
 
-- Work on a feature branch; never commit directly to `main`. I merge PRs.
+- Every change, docs included, goes on a feature branch and reaches `main` only through a pull request. Never commit directly to `main`. I merge PRs.
 - Keep `docs/architecture.md` true: if a design decision changes, update it in the same PR.
 - Record decisions and gotchas in `memory.md`.
 - The fleet server must never read, store or forward Claude or GitHub credentials. Teams run through the unmodified `claude` CLI signed in with my own account.
 - Never use `bypassPermissions`.
 - Secrets and runtime state stay out of git: `fleet/sessions.json`, `fleet/jobs/`, `.env`.
+
+## "clean up" command
+
+When I say "clean up", delete the feature branches whose PRs I have merged, on the remote and locally:
+
+1. `git fetch --prune origin`, then switch to `main` and `git pull --ff-only`.
+2. List merged PRs with `gh pr list --state merged --base main --json number,headRefName,headRefOid`. Use this, not `git branch --merged`, so squash and rebase merges are caught.
+3. For each merged PR's branch that still exists, delete it only if its tip (remote, and local if present) equals the PR's `headRefOid`. A branch with commits after the merge is skipped and reported.
+4. Remove any worktree on that branch (`git worktree remove`), then delete the remote branch (`git push origin --delete <branch>`) and the local one (`git branch -D <branch>`; safe because the tip was checked in step 3).
+5. Never delete `main`, a branch with an open PR, or a branch with no merged PR.
+6. Report what was deleted and what was skipped, with the reason.
 
 ## Later (Phase 1 deliverable)
 
