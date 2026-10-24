@@ -20,11 +20,12 @@ Phase 1 (scaffold). Work only on unchecked items in `docs/roadmap.md` under Phas
 When I say "clean up", delete the feature branches whose PRs I have merged, on the remote and locally:
 
 1. `git fetch --prune origin`, then switch to `main` and `git pull --ff-only`.
-2. List merged PRs with `gh pr list --state merged --base main --json number,headRefName,headRefOid`. Use this, not `git branch --merged`, so squash and rebase merges are caught.
-3. For each merged PR's branch that still exists, delete it only if its tip (remote, and local if present) equals the PR's `headRefOid`. A branch with commits after the merge is skipped and reported.
-4. Remove any worktree on that branch (`git worktree remove`), then delete the remote branch (`git push origin --delete <branch>`) and the local one (`git branch -D <branch>`; safe because the tip was checked in step 3).
-5. Never delete `main`, a branch with an open PR, or a branch with no merged PR.
-6. Report what was deleted and what was skipped, with the reason.
+2. List merged PRs with `gh pr list --state merged --base main --json number,headRefName,headRefOid`; their branches that still exist are the candidates.
+3. Delete a candidate only if its tip (remote, and local if present) equals the PR's `headRefOid` and `git log main..<branch>` is empty. Skip the rest and report them: a branch with commits after the merge, or one that was squash- or rebase-merged, which I delete myself.
+4. Before deleting, list the branches to delete and to skip.
+5. Remove any worktree on that branch (`git worktree remove`), then delete the remote branch (`git push origin --delete <branch>`) and the local one with `git branch -d <branch>`. Never use `git branch -D`; if `-d` refuses, skip the branch and report it.
+6. Never delete `main`, a branch with an open PR, or a branch with no merged PR.
+7. Report what was deleted and what was skipped, with the reason.
 
 ## Later (Phase 1 deliverable)
 
