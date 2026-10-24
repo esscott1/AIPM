@@ -1,4 +1,5 @@
-# runtime state
+# runtime state (projects.example.yaml documents the registry format)
+projects.yaml
 fleet/sessions.json
 fleet/jobs/
 
@@ -6,6 +7,7 @@ fleet/jobs/
 .venv/
 __pycache__/
 *.pyc
+.pytest_cache/
 
 # secrets
 .env
