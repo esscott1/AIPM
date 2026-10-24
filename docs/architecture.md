@@ -96,7 +96,7 @@ A new AIPM knows nothing about existing repos, so each one is adopted explicitly
 
 1. **Find candidates:** scan `C:\src` for git repos not yet in `projects.yaml`, or take a path you give it.
 2. **Inspect the repo:** read its remote, default branch, open branches and worktrees.
-3. **Check team rules:** if `CLAUDE.md` or `memory.md` is missing, offer to create it. If one exists, offer to add a short AIPM section covering PR requests, cleanup after a merge and the end-of-task report. Existing content is never overwritten.
+3. **Check team rules:** if `CLAUDE.md` or `memory.md` is missing, offer to create it. If one exists, offer to add a short AIPM section covering PR requests, cleanup after a merge and the end-of-task report. Existing content is never overwritten. If `main` has no "Protect main" ruleset, offer to apply it.
 4. **Pick up history:** list the existing Claude Code sessions for that folder and let you import one as the team's session, so the team keeps its context, or start fresh.
 5. **Seed subagents:** add spike, planner and researcher only where they are missing.
 6. **Register:** write the `projects.yaml` entry with goal, token budget, `status: active` and the current commit as `last_seen_commit`.
@@ -112,8 +112,9 @@ A new AIPM knows nothing about existing repos, so each one is adopted explicitly
 2. **Scaffold:** create `C:\src\<name>`, seed `README.md`, `.gitignore`, `CLAUDE.md` (goal, standards), `memory.md` and `.claude/agents/` (spike, planner, researcher).
 3. **Init:** `git init -b main`, first commit.
 4. **Publish:** `gh repo create esscott1/<name> --private --source . --remote origin --push`.
-5. **Register:** append the entry to `projects.yaml`.
-6. **Staff:** start the project team session in the new repo, save its session ID, and hand it a kickoff task (e.g. "produce a plan for the site").
+5. **Protect main:** apply the "Protect main" ruleset to the new repo (see Guardrails).
+6. **Register:** append the entry to `projects.yaml`.
+7. **Staff:** start the project team session in the new repo, save its session ID, and hand it a kickoff task (e.g. "produce a plan for the site").
 
 The `gh` CLI must be installed and signed in on your machine; the fleet server never stores a GitHub token.
 
@@ -144,7 +145,7 @@ Teams own their branches and worktrees, AIPM approves pull requests, and you app
 | Clean up: delete merged feature branches and their worktrees | Project team, when told to clean up or when its CLAUDE.md says to after AIPM reports the merge |
 | Code edits, tests, plans, research | Project team, automatically |
 | Open a pull request | AIPM approves the team's request |
-| Merge to `main` | You |
+| Merge to `main` | You; enforced on GitHub by the "Protect main" ruleset (PR required, no bypass) |
 | Create a GitHub repo, change visibility | You |
 | Delete unmerged branches, files or repos | You |
 | Exceed a job's turn or token budget | Job stops; PM reports it |
@@ -152,6 +153,7 @@ Teams own their branches and worktrees, AIPM approves pull requests, and you app
 - Each team's `CLAUDE.md` and `memory.md` set its commit, branching, worktree and cleanup rules; AIPM does not override them.
 - A team asks for a PR with `request_pr`; the PM checks the team's report against the task and approves or sends it back with a reason.
 - AIPM is the source of truth for merges: a team cleans up only branches AIPM has reported as merged, so unmerged work is never deleted by a team.
+- **"Protect main" ruleset on GitHub** (GitHub Pro, so it applies to private repos): pull request required (0 approvals, since I can't approve my own PRs), no force pushes, no deleting `main`, and no bypass actors. Teams act through my GitHub sign-in, so allowing myself to bypass would let them bypass too. AIPM applies it to every repo it creates; adopted repos get it during `/adopt-project`.
 - Teams start in `plan` or `acceptEdits` mode; `bypassPermissions` is never used.
 - Each job has `max_turns` and a token cap from `projects.yaml`.
 
