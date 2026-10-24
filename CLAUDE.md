@@ -15,6 +15,13 @@ Phase 1 (scaffold). Work only on unchecked items in `docs/roadmap.md` under Phas
 - Never use `bypassPermissions`.
 - Secrets and runtime state stay out of git: `projects.yaml`, `fleet/sessions.json`, `fleet/jobs/`, `.env`.
 
+## When I say I merged a PR
+
+1. Confirm it merged: `gh pr view <number> --json state,mergeCommit` shows `MERGED`.
+2. Run `git fetch --prune origin`, switch to `main` and `git pull --ff-only`, then confirm `git rev-parse main` equals `git rev-parse origin/main`.
+3. If both checks pass, ask me whether to clean up. Run "clean up" below only after I say yes.
+4. If either check fails, tell me what you found and don't offer to clean up.
+
 ## "clean up" command
 
 When I say "clean up", delete the feature branches whose PRs I have merged, on the remote and locally:
