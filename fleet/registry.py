@@ -11,14 +11,14 @@ not here, so each field has one home.
 
 from __future__ import annotations
 
-import os
 import re
-import tempfile
 from pathlib import Path
 from typing import Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, field_validator
+
+from fleet.files import write_atomic
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_REGISTRY_PATH = REPO_ROOT / "projects.yaml"
@@ -34,11 +34,16 @@ class RegistryError(Exception):
     """A registry operation that cannot be done, such as adding a duplicate."""
 
 
+DEFAULT_TOKEN_CAP = 100_000
+
+
 class Budget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    max_turns: PositiveInt
-    max_tokens_per_job: PositiveInt
+    # Report-only for now: a job that goes over is flagged in its report, never stopped.
+    max_tokens_per_job: PositiveInt = DEFAULT_TOKEN_CAP
+    # Passed to claude as --max-turns only when set. Unset means no turn limit.
+    max_turns: PositiveInt | None = None
 
 
 class Project(BaseModel):
@@ -49,7 +54,7 @@ class Project(BaseModel):
     goal: str
     model: str = "sonnet"
     permission_mode: PermissionMode = "plan"
-    budget: Budget
+    budget: Budget = Field(default_factory=Budget)
     status: Status = "active"
 
     @field_validator("path")
@@ -120,13 +125,4 @@ def load_registry(path: Path = DEFAULT_REGISTRY_PATH) -> Registry:
 def save_registry(registry: Registry, path: Path = DEFAULT_REGISTRY_PATH) -> None:
     """Write the registry atomically, so a crash never leaves a half-written file."""
     data = registry.model_dump(mode="json")
-    text = yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(text)
-        os.replace(tmp, path)
-    except BaseException:
-        Path(tmp).unlink(missing_ok=True)
-        raise
+    write_atomic(path, yaml.safe_dump(data, sort_keys=False, allow_unicode=True))

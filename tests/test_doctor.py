@@ -1,3 +1,5 @@
+import json
+import subprocess
 from pathlib import Path
 
 from fleet import doctor
@@ -30,6 +32,47 @@ def test_configured_git_bash_path_missing_fails(tmp_path, monkeypatch):
     monkeypatch.setenv("CLAUDE_CODE_GIT_BASH_PATH", str(tmp_path / "nope.exe"))
     monkeypatch.setattr(doctor.shutil, "which", lambda name: None)
     assert doctor.check_git_bash()[0].status == "FAIL"
+
+
+def fake_auth_status(monkeypatch, status: dict | str):
+    stdout = status if isinstance(status, str) else json.dumps(status)
+    monkeypatch.setattr(doctor.shutil, "which", lambda name: "claude.exe" if name == "claude" else None)
+    monkeypatch.setattr(doctor, "run", lambda args, **kw: subprocess.CompletedProcess(args, 0, stdout, ""))
+    for name in doctor.API_KEY_VARS:
+        monkeypatch.delenv(name, raising=False)
+
+
+def test_claude_ai_sign_in_passes(monkeypatch):
+    fake_auth_status(monkeypatch, {"loggedIn": True, "authMethod": "claude.ai", "email": "someone@example.com"})
+    [check] = doctor.check_claude_sign_in()
+    assert check.status == "PASS"
+    assert "@" not in check.detail
+
+
+def test_other_sign_in_method_warns(monkeypatch):
+    fake_auth_status(monkeypatch, {"loggedIn": True, "authMethod": "api_key"})
+    [check] = doctor.check_claude_sign_in()
+    assert check.status == "WARN"
+    assert "not claude.ai" in check.detail
+
+
+def test_signed_out_fails(monkeypatch):
+    fake_auth_status(monkeypatch, {"loggedIn": False})
+    assert doctor.check_claude_sign_in()[0].status == "FAIL"
+
+
+def test_unreadable_auth_status_warns(monkeypatch):
+    fake_auth_status(monkeypatch, "not json")
+    assert doctor.check_claude_sign_in()[0].status == "WARN"
+
+
+def test_api_key_variable_warns_without_showing_value(monkeypatch):
+    fake_auth_status(monkeypatch, {"loggedIn": True, "authMethod": "claude.ai"})
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "secret-value")
+    checks = doctor.check_claude_sign_in()
+    assert [c.status for c in checks] == ["PASS", "WARN"]
+    assert "ANTHROPIC_API_KEY" in checks[1].detail
+    assert "secret-value" not in checks[1].detail
 
 
 def test_main_exit_code_reflects_failures(monkeypatch, capsys):

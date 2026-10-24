@@ -4,7 +4,9 @@
     uv run python -m fleet.doctor --live   # also one tiny headless `claude -p` call
 
 Only runs commands and reads their exit codes and version output. It never
-reads credential files or prints auth output.
+reads credential files. From `claude auth status` it reports only whether you
+are signed in and the sign-in method; from the environment, only whether API
+key variables are set, never their values.
 """
 
 from __future__ import annotations
@@ -19,6 +21,8 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
+
+from fleet.runner import API_KEY_VARS, count_tokens
 
 MIN_PYTHON = (3, 12)
 
@@ -109,6 +113,36 @@ def check_claude() -> Check:
     return Check("PASS", "claude", f"{out} ({claude})")
 
 
+def check_claude_sign_in() -> list[Check]:
+    """Teams must run on the claude.ai sign-in (your plan), never an API key."""
+    checks: list[Check] = []
+    claude = shutil.which("claude")
+    if claude:
+        try:
+            status = json.loads(run([claude, "auth", "status"]).stdout)
+        except (json.JSONDecodeError, subprocess.TimeoutExpired):
+            status = None
+        if not isinstance(status, dict):
+            checks.append(Check("WARN", "claude sign-in", "couldn't read `claude auth status`"))
+        elif not status.get("loggedIn"):
+            checks.append(Check("FAIL", "claude sign-in", "not signed in; run `claude` and sign in with your claude.ai account"))
+        elif status.get("authMethod") == "claude.ai":
+            checks.append(Check("PASS", "claude sign-in", "claude.ai; teams run on your subscription"))
+        else:
+            checks.append(Check(
+                "WARN", "claude sign-in",
+                f"method is {status.get('authMethod')!r}, not claude.ai; teams would not run on your subscription",
+            ))
+    set_vars = [name for name in API_KEY_VARS if name in os.environ]
+    if set_vars:
+        checks.append(Check(
+            "WARN", "API key variables",
+            f"{', '.join(set_vars)} set; the fleet server drops them for teams, "
+            "but other claude sessions here would bill that API account",
+        ))
+    return checks
+
+
 def check_claude_live() -> Check:
     """One headless call, the way the fleet server will run teams, minus --resume."""
     claude = shutil.which("claude")
@@ -131,10 +165,7 @@ def check_claude_live() -> Check:
         return Check("FAIL", "claude -p", f"exit {proc.returncode}, not JSON: {tail[0]}")
     if result.get("is_error"):
         return Check("FAIL", "claude -p", f"error result: {result.get('subtype')}: {result.get('result')}")
-    usage = result.get("usage") or {}
-    tokens = sum(usage.get(k) or 0 for k in (
-        "input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens",
-    ))
+    tokens = count_tokens(result.get("usage"))
     return Check("PASS", "claude -p", f"replied {result.get('result')!r}; {tokens} tokens")
 
 
@@ -143,6 +174,7 @@ def run_checks(live: bool) -> list[Check]:
     if sys.platform == "win32":
         checks.extend(check_git_bash())
     checks.extend([check_gh(), check_claude()])
+    checks.extend(check_claude_sign_in())
     if live:
         checks.append(check_claude_live())
     return checks

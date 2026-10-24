@@ -1,6 +1,6 @@
 # AIPM — AI Program Manager Architecture
 
-As of 2026-10-23 · Eric Scott
+As of 2026-10-24 · Eric Scott
 
 ## Summary
 
@@ -49,7 +49,7 @@ You talk only to the PM session. The PM calls the fleet server's MCP tools, and 
 **Fleet MCP tools**
 
 - `list_projects`, `project_status(project)`
-- `dispatch(project, instruction, mode)` returns a job ID; `job_status(job)`, `get_report(job)`, `cancel(job)`
+- `dispatch(project, instruction, mode)` returns a running job at once; `get_report(job)` returns its state and the team's report (see Dispatch and jobs). `job_status(job)` and `cancel(job)` come in Phase 2
 - `broadcast(instruction, projects)` for the same ask across repos (e.g. "bump dependencies" or "clean up")
 - `request_pr(project, branch, summary)` from a team, and `approve_pr(request)` / `reject_pr(request, reason)` from the PM
 - `notify_merged(project, pr)` tells a team its PR was merged, so it can run its cleanup
@@ -58,7 +58,7 @@ You talk only to the PM session. The PM calls the fleet server's MCP tools, and 
 
 **Lifecycle tools:** `adopt_project`, `retire_project`, `pause(project)`, `resume(project)` and `reconcile(project)`, which brings AIPM up to date with anything done in the repo outside it.
 
-**State:** git is the source of truth (a branch and PR per task). `jobs/` holds job logs, and `STATUS.md` is the rolled-up board. Each field has one home:
+**State:** git is the source of truth (a branch and PR per task). `fleet/jobs/` holds one record per job, and `STATUS.md` is the rolled-up board. Each field has one home:
 
 - `projects.yaml` is the registry. `/adopt-project` and `create_project` add entries, `pause` and `resume` set `status`, and `/retire-project` removes entries. You can edit a budget or model by hand, but never need to.
 - `fleet/sessions.json` holds what changes on every run: each project's `session_id` and `last_seen_commit`.
@@ -89,7 +89,7 @@ projects:
     goal: Featured portfolio project; client-ready simulation
     model: sonnet
     permission_mode: acceptEdits   # plan | acceptEdits; bypassPermissions is rejected
-    budget: { max_turns: 40, max_tokens_per_job: 1000000 }
+    budget: { max_tokens_per_job: 100000 }   # max_turns is optional
     status: active                 # active | paused
 ```
 
@@ -98,6 +98,24 @@ The matching `fleet/sessions.json` entry, written by the fleet server and `recon
 ```json
 { "montecarlo": { "session_id": null, "last_seen_commit": null } }
 ```
+
+## Dispatch and jobs
+
+`dispatch` starts a team task in the background and returns a job right away, because a task can take minutes and the PM session shouldn't wait on it. The PM polls `get_report` until the job ends.
+
+1. **Checks:** the project exists, isn't paused, its folder exists, and it has no other job running. A project runs one job at a time, because two runs resuming one session would fork its history.
+2. **Mode:** the project's `permission_mode` is the ceiling. A dispatch may ask for `plan` on an `acceptEdits` project, never the reverse.
+3. **Run:** the fleet server runs `claude -p <task> --output-format json --permission-mode <mode> --model <model> --json-schema <report>` in the repo folder, adding `--resume <session_id>` once the team has a session and `--max-turns` only if the project sets one.
+4. **Brief:** each task carries a short AIPM brief: follow the repo's CLAUDE.md and memory.md, work on a feature branch, don't open a pull request, finish with the report. It goes in the prompt rather than `--append-system-prompt`, which is recorded once per session and would never reach existing teams if it changed.
+5. **Result:** the job record in `fleet/jobs/<id>.json` ends as `succeeded` with the report, or `failed` with the reason. The returned `session_id` is saved to `sessions.json`.
+
+| Outcome | What happens |
+| --- | --- |
+| Team finishes | `succeeded`; `report` has summary, branch, changed, tests, blockers and next_step; `tokens_used` is counted by the fleet server |
+| Over the token cap | Flagged with `over_token_cap`; the job is not stopped |
+| Max plan usage limit hit | `failed` with claude's message and reset time; the session is saved, so the next dispatch picks up where it stopped |
+| Saved session can't be resumed | `failed`; the fleet server never starts a fresh session in its place, which would drop the team's context |
+| Fleet server stops mid-job | `lost` once the job's file stops being refreshed (every 30 s); the `claude` process may still finish on its own |
 
 ## Adopting existing projects
 
@@ -157,7 +175,9 @@ Teams own their branches and worktrees, AIPM approves pull requests, and you app
 | Merge to `main` | You; enforced on GitHub by the "Protect main" ruleset (PR required, no bypass) |
 | Create a GitHub repo, change visibility | You |
 | Delete unmerged branches, files or repos | You |
-| Exceed a job's turn or token budget | Job stops; PM reports it |
+| Go over a job's token cap | Flagged in the report; the job keeps running |
+| Hit the Max plan's usage limit | Job ends with the reset time; the PM reports it and the team resumes later |
+| Run a team on an API key instead of the claude.ai sign-in | You, confirmed twice in the PM session |
 
 - Each team's `CLAUDE.md` and `memory.md` set its commit, branching, worktree and cleanup rules; AIPM does not override them.
 - A team asks for a PR with `request_pr`; the PM checks the team's report against the task and approves or sends it back with a reason.
@@ -165,7 +185,7 @@ Teams own their branches and worktrees, AIPM approves pull requests, and you app
 - Cleanup deletes local branches with `git branch -d` only, never `-D`. A branch `-d` refuses (squash- or rebase-merged, or with commits after the merge) is skipped and reported for me to delete. Team templates and the AIPM section `/adopt-project` adds carry the same rule.
 - **"Protect main" ruleset on GitHub** (GitHub Pro, so it applies to private repos): pull request required (0 approvals, since I can't approve my own PRs), no force pushes, no deleting `main`, and no bypass actors. Teams act through my GitHub sign-in, so allowing myself to bypass would let them bypass too. AIPM applies it to every repo it creates; adopted repos get it during `/adopt-project`.
 - Teams start in `plan` or `acceptEdits` mode; `bypassPermissions` is never used.
-- Each job has `max_turns` and a token cap from `projects.yaml`.
+- Each job has a token cap from `projects.yaml` (default 100,000). For now it is report-only: a job that goes over is flagged, never stopped, so a team never fails mid-task on an AIPM limit. The Max plan's usage limit is the hard stop. `max_turns` is optional and unset by default.
 
 ## Working on adopted projects outside AIPM
 
@@ -231,14 +251,32 @@ AIPM has two front ends over the same fleet server and guardrails: the PM sessio
 
 ## Billing and authentication
 
-AIPM is for personal use on your Max plan. The fleet server runs the unmodified `claude` CLI headless (`claude -p --resume <id> --output-format json`) signed in with your own subscription, and never reads, stores or forwards your login token. If AIPM is ever offered to clients or other users, switch to API key authentication ([legal and compliance](https://code.claude.com/docs/en/legal-and-compliance), [Agent SDK overview](https://code.claude.com/docs/en/agent-sdk/overview)).
+AIPM is for personal use on your Max plan. Everything runs on your laptop. The fleet server runs the unmodified `claude` CLI headless (`claude -p --resume <id> --output-format json`), and every `claude` process, the PM session and each team, uses your claude.ai sign-in. The fleet server never reads, stores or forwards your login token.
+
+```mermaid
+flowchart LR
+    subgraph laptop["Your laptop"]
+        pm["PM session<br/>claude in VS Code"] -->|dispatch, get_report| fleet["Fleet server<br/>(never reads your sign-in)"]
+        fleet -->|"claude -p in the repo folder"| teams["Project teams<br/>one claude process each"]
+        signin[("Your claude.ai sign-in<br/>%USERPROFILE%\.claude")]
+        pm -.-> signin
+        teams -.-> signin
+    end
+    signin -.->|usage counts against your Max plan| anthropic[Anthropic]
+```
+
+- **API key variables are removed for teams.** If `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN` is set, `claude` bills that API account instead of your plan. The fleet server drops both names from each team's environment without reading their values. `fleet.doctor` checks that `claude auth status` reports `claude.ai` and warns if either variable is set.
+- **API keys only with your double confirmation.** A team never runs on an API key by default. Using one needs you to confirm twice in the PM session: AIPM asks and explains the billing change, then asks again before the first dispatch that would use it.
+- **One plan, shared limits.** The PM and every team draw on the same usage limits. A headless call starts at about 50k tokens, mostly Claude Code's cached setup, before the team does any work.
+- **Someone else's install** runs the same way on their laptop, under their own sign-in and plan. If AIPM is ever offered to clients or other users, revisit API key authentication ([legal and compliance](https://code.claude.com/docs/en/legal-and-compliance), [Agent SDK overview](https://code.claude.com/docs/en/agent-sdk/overview)), with the double confirmation above.
 
 ## Risks and open decisions
 
 **Risks**
 
 - **Sessions are tied to their folder.** Claude stores sessions under `~/.claude/projects/<encoded-cwd>/`, so a resume from a different directory finds nothing. The fleet server always resumes a team from its registered path; moving a repo means re-registering it.
-- **Token use multiplies** with parallel teams and subagents, all drawn from one Max plan allowance; token budgets in `projects.yaml` are the control.
+- **Token use multiplies** with parallel teams and subagents, all drawn from one Max plan allowance. The plan's usage limit is the hard stop; token caps in `projects.yaml` flag heavy jobs but don't stop them yet.
+- **A team with no turn limit can loop** until the plan's usage limit stops it. A long-running-job warning may come later.
 - **Agent Teams is not the base.** It is experimental and interactive-only, built to coordinate sessions on one codebase; AIPM needs separate repos with long-lived context.
 
 **Open decisions**

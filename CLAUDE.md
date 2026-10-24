@@ -12,6 +12,7 @@ Phase 1 (scaffold). Work only on unchecked items in `docs/roadmap.md` under Phas
 - Keep `docs/architecture.md` true: if a design decision changes, update it in the same PR.
 - Record decisions and gotchas in `memory.md`.
 - The fleet server must never read, store or forward Claude or GitHub credentials. Teams run through the unmodified `claude` CLI signed in with my own account.
+- Teams run on my claude.ai sign-in. Never run a team on an API key unless I confirm twice in this session: ask and explain the billing change, then ask again before the first dispatch.
 - Never use `bypassPermissions`.
 - Secrets and runtime state stay out of git: `projects.yaml`, `fleet/sessions.json`, `fleet/jobs/`, `.env`.
 

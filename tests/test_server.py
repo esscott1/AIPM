@@ -49,11 +49,13 @@ def files(tmp_path):
     return repo, registry_path, sessions_path
 
 
-async def test_tools_are_listed_and_read_only(tmp_path):
-    async with Client(create_server(tmp_path / "none.yaml", tmp_path / "none.json")) as client:
+async def test_tools_are_listed_and_annotated(tmp_path):
+    async with Client(create_server(tmp_path / "none.yaml", tmp_path / "none.json", tmp_path / "jobs")) as client:
         tools = {t.name: t for t in (await client.list_tools()).tools}
-    assert set(tools) == {"list_projects", "project_status"}
-    assert all(t.annotations.read_only_hint for t in tools.values())
+    assert set(tools) == {"list_projects", "project_status", "dispatch", "get_report"}
+    assert all(tools[name].annotations.read_only_hint for name in ("list_projects", "project_status", "get_report"))
+    assert tools["dispatch"].annotations.read_only_hint is False
+    assert tools["dispatch"].annotations.destructive_hint is False
 
 
 async def test_list_projects_empty_registry(tmp_path):

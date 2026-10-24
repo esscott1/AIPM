@@ -44,9 +44,11 @@ def test_missing_file_is_empty_registry(tmp_path):
 
 
 def test_defaults(tmp_path):
-    project = make_project(make_repo(tmp_path))
+    project = Project(path=make_repo(tmp_path), remote="r", goal="g")
     assert project.permission_mode == "plan"
     assert project.status == "active"
+    # 100K token cap, report-only; no turn limit unless set.
+    assert project.budget == Budget(max_tokens_per_job=100_000, max_turns=None)
 
 
 def test_bypass_permissions_rejected(tmp_path):

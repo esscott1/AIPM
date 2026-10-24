@@ -26,23 +26,24 @@ Goal: one PM session can drive one adopted team end to end.
 - [x] Decide where the fleet server runs: native Windows
 - [x] Windows prerequisites: Python 3.12+, Git for Windows (Git Bash), `claude` and `gh` signed in on Windows (`uv run python -m fleet.doctor`)
 - [ ] `CLAUDE.md` gains the PM role, approval gates and "never edit project code" rule
-- [x] `projects.yaml` schema: path, remote, goal, model, permission_mode, budget (turns, tokens), status. Local and written by fleet tools; `session_id` and `last_seen_commit` live in `sessions.json`
-- [ ] `fleet/server.py`: MCP server exposing `list_projects`, `project_status`, `dispatch`, `get_report` (`list_projects` and `project_status` done)
-- [ ] Teams run through the unmodified `claude` CLI headless (`-p --resume --output-format json`), `cwd` = repo
-- [ ] `sessions.json` persistence (`session_id`, `last_seen_commit`); resume always from the registered path
-- [ ] Structured end-of-task report (changed, tests, blockers, next step, tokens used)
+- [x] `projects.yaml` schema: path, remote, goal, model, permission_mode, budget (token cap, default 100K and report-only; optional turn limit), status. Local and written by fleet tools; `session_id` and `last_seen_commit` live in `sessions.json`
+- [x] `fleet/server.py`: MCP server exposing `list_projects`, `project_status`, `dispatch`, `get_report`; `dispatch` runs jobs in the background
+- [x] Teams run through the unmodified `claude` CLI headless (`-p --resume --output-format json`), `cwd` = repo, on the claude.ai sign-in (API key variables removed)
+- [ ] `sessions.json` persistence (`session_id`, `last_seen_commit`); resume always from the registered path (`session_id` done; `last_seen_commit` comes with `reconcile`)
+- [x] Structured end-of-task report (summary, branch, changed, tests, blockers, next step, tokens used)
 - [ ] `reconcile(project)`: fetch, diff since `last_seen_commit`, detect merged PRs via `gh`, brief the team; runs before every dispatch
 - [ ] `pause` / `resume`; dispatches to a paused project wait
 - [ ] `/adopt-project` skill (find, inspect, team rules, import session, seed subagents, register, health check) and `/retire-project`
 - [x] `.mcp.json` registers the fleet server with the PM session
+- [ ] Live check of `dispatch`: real `claude -p` runs against a throwaway repo (deferred until later in Phase 1; ask first, about 50k tokens per run)
 - [ ] **Exit test:** adopt MonteCarlo, dispatch "report your current state", receive the report in the PM session
 
 ## Phase 2 — Parallel
 
-- [ ] Background jobs with `job_status` and `cancel`
+- [ ] `job_status` and `cancel` for the background jobs `dispatch` starts
 - [ ] `broadcast(instruction, projects)`
 - [ ] Job stops and reports if its branch or worktree changed underneath it
-- [ ] Token budgets enforced per job (`max_turns`, `max_tokens_per_job`), tokens reported per job and repo
+- [ ] Decide whether the token cap ever stops a job (report-only in Phase 1); tokens reported per job and repo
 - [ ] Adopt job-search-assistant
 - [ ] **Exit test:** one broadcast ("report dependency status") runs in all adopted repos concurrently
 
