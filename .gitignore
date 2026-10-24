@@ -1,0 +1,17 @@
+# runtime state
+fleet/sessions.json
+fleet/jobs/
+
+# python
+.venv/
+__pycache__/
+*.pyc
+
+# secrets
+.env
+*.env
+
+# os / editor
+.DS_Store
+Thumbs.db
+.vscode/

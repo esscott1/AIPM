@@ -1,0 +1,471 @@
+<title>AIPM Program Board</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a program board. Summary strip, then the architecture as the centerpiece with a detail rail, then teams, bootstrap flow, phases, guardrails. */
+:root {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --tint: #e8edf4;
+  --ink: #18202d;
+  --muted: #5a6476;
+  --line: #c6cdd8;
+  --accent: #2453a3;
+  --accent-soft: #e2eaf7;
+  --new: #b35c10;
+  --new-soft: #fbeee0;
+  --good: #2b7a4b;
+  --good-soft: #e1f1e7;
+  --gate: #8a3fa0;
+  --gate-soft: #f3e6f6;
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10141b; --surface: #171d26; --tint: #1e2531; --ink: #e5e9ef; --muted: #9ba5b4; --line: #333c4a;
+    --accent: #7ea6ea; --accent-soft: #1c2940; --new: #e69a52; --new-soft: #2d2217;
+    --good: #6cc492; --good-soft: #17291f; --gate: #cf94e0; --gate-soft: #2a1d30; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10141b; --surface: #171d26; --tint: #1e2531; --ink: #e5e9ef; --muted: #9ba5b4; --line: #333c4a;
+  --accent: #7ea6ea; --accent-soft: #1c2940; --new: #e69a52; --new-soft: #2d2217;
+  --good: #6cc492; --good-soft: #17291f; --gate: #cf94e0; --gate-soft: #2a1d30; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+}
+.wrap {
+  max-width: 1180px; margin: 0 auto;
+  padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 40px;
+}
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 42px); font-weight: 700; letter-spacing: -0.01em; line-height: 1.05; }
+h2 { font-size: 22px; font-weight: 600; }
+h3 { font-size: 17px; font-weight: 600; }
+p { margin: 0; }
+code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
+.eyebrow { font-family: var(--font-display); font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.lede { color: var(--muted); max-width: 64ch; }
+
+/* header */
+header.top { display: grid; gap: 14px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--muted); }
+.meta b { color: var(--ink); font-weight: 500; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill.adopt { color: var(--accent); background: var(--accent-soft); }
+.pill.new { color: var(--new); background: var(--new-soft); }
+.pill.gate { color: var(--gate); background: var(--gate-soft); }
+.pill.auto { color: var(--good); background: var(--good-soft); }
+.pill.design { color: var(--muted); background: var(--tint); }
+
+/* summary strip */
+.strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.strip > div { padding: 14px 18px; display: grid; gap: 2px; }
+.strip > div + div { border-left: 1px solid var(--line); }
+.strip .n { font-family: var(--font-display); font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.strip .l { font-size: 13px; color: var(--muted); }
+@media (max-width: 640px) {
+  .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .strip > div:nth-child(3) { border-left: 0; }
+  .strip > div:nth-child(n+3) { border-top: 1px solid var(--line); }
+}
+
+section { display: grid; gap: 16px; }
+.sec-head { display: grid; gap: 4px; }
+
+/* architecture */
+.arch { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .arch { grid-template-columns: minmax(0, 1fr); } }
+.diagram { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; padding: 8px; }
+.diagram svg { display: block; width: 100%; min-width: 720px; height: auto; font-family: var(--font-body); }
+.n-box { fill: var(--surface); stroke: var(--line); stroke-width: 1.25; }
+.n-tint { fill: var(--tint); stroke: var(--line); stroke-width: 1.25; }
+.n-new { fill: var(--new-soft); stroke: var(--new); stroke-width: 2; stroke-dasharray: 7 5; }
+.n-gh { fill: var(--tint); stroke: var(--line); stroke-width: 1.25; }
+.t-name { fill: var(--ink); font-weight: 600; font-size: 15px; }
+.t-big { fill: var(--ink); font-family: var(--font-display); font-weight: 600; font-size: 19px; }
+.t-sub { fill: var(--muted); font-size: 12.5px; }
+.t-mono { fill: var(--muted); font-family: var(--font-mono); font-size: 12px; }
+.t-chip { fill: var(--ink); font-size: 12.5px; }
+.t-edge { fill: var(--muted); font-size: 12px; }
+.t-edge-new { fill: var(--new); font-size: 12px; font-weight: 600; }
+.wire { fill: none; stroke: var(--muted); stroke-width: 1.25; }
+.wire-new { fill: none; stroke: var(--new); stroke-width: 1.5; stroke-dasharray: 6 4; }
+.wire-thin { fill: none; stroke: var(--line); stroke-width: 1.25; }
+.ah { fill: var(--muted); }
+.ah-new { fill: var(--new); }
+.node { cursor: pointer; outline: none; }
+.node:hover .hl, .node:focus-visible .hl { stroke: var(--accent); stroke-width: 2; }
+.node.sel .hl { stroke: var(--accent); stroke-width: 2.5; }
+.node:focus-visible .hl { stroke-dasharray: none; }
+
+.detail { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 12px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); }
+@media (max-width: 900px) { .detail { position: static; } }
+.detail h3 { font-size: 20px; }
+.detail ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; }
+.detail .where { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); word-break: break-all; }
+.detail .hint { font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+.cmd { font-family: var(--font-mono); font-size: 12.5px; background: var(--tint); border-radius: 6px; padding: 8px 10px; overflow-x: auto; white-space: pre; }
+
+/* teams */
+.teams { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 900px) { .teams { grid-template-columns: minmax(0, 1fr); } }
+.team { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.team.is-new { border: 2px dashed var(--new); background: var(--new-soft); }
+.team-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.team-head h3 { font-size: 21px; }
+dl.kv { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; font-size: 13px; }
+dl.kv dt { color: var(--muted); }
+dl.kv dd { margin: 0; font-family: var(--font-mono); font-size: 12.5px; word-break: break-all; }
+.subs { display: grid; gap: 6px; }
+.sub { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 10px; font-size: 13px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+.sub b { font-family: var(--font-mono); font-weight: 500; font-size: 12.5px; }
+.sub span { color: var(--muted); }
+
+/* bootstrap flow */
+.flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; counter-reset: step; }
+.flow li { position: relative; padding: 14px 14px 14px 0; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.flow li::before { counter-increment: step; content: counter(step); font-family: var(--font-display); font-weight: 700; font-size: 13px; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; background: var(--new); color: var(--surface); position: relative; z-index: 1; }
+.flow li::after { content: ""; position: absolute; left: 26px; right: 0; top: 27px; height: 2px; background: var(--line); }
+.flow li:last-child::after { display: none; }
+.flow li.gate::before { background: var(--gate); }
+.flow strong { font-family: var(--font-display); font-size: 16px; font-weight: 600; }
+.flow p { font-size: 13px; color: var(--muted); }
+.flow code { word-break: break-all; }
+@media (max-width: 900px) {
+  .flow { grid-template-columns: minmax(0, 1fr); }
+  .flow li { grid-template-columns: 26px minmax(0, 1fr); column-gap: 12px; padding: 0 0 18px; }
+  .flow li > * { grid-column: 2; }
+  .flow li::before { grid-row: 1 / span 3; grid-column: 1; }
+  .flow li::after { left: 12px; width: 2px; height: auto; top: 26px; bottom: 0; right: auto; }
+}
+.flow-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 18px 6px; display: grid; gap: 10px; }
+.flow-note { font-size: 13px; color: var(--muted); padding-bottom: 12px; }
+
+/* phases */
+.phases { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 900px) { .phases { grid-template-columns: minmax(0, 1fr); } }
+.phase { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.phase.first { border-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+.phase .num { font-family: var(--font-display); font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.phase h3 { font-size: 18px; }
+.phase p { font-size: 13px; }
+.phase .done { font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; }
+.phase .done b { color: var(--ink); font-weight: 600; }
+
+/* two-up */
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; font-family: var(--font-display); font-weight: 600; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 0 8px 8px 0; border-bottom: 1px solid var(--line); }
+td { padding: 9px 8px 9px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+.tools { display: grid; gap: 8px; }
+.tool { display: grid; grid-template-columns: minmax(0, 210px) minmax(0, 1fr); gap: 12px; font-size: 13.5px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.tool:last-child { border-bottom: 0; padding-bottom: 0; }
+.tool code { color: var(--accent); font-size: 12.5px; word-break: break-all; }
+@media (max-width: 520px) { .tool { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+footer { font-size: 12.5px; color: var(--muted); }
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <div class="eyebrow">Program board · esscott1</div>
+  <h1>AIPM: one session to run every project team</h1>
+  <p class="lede">A Claude Code program manager in <code>C:\src\AIPM</code> that dispatches work to persistent project teams in each repo, rolls up their status, and bootstraps new GitHub projects.</p>
+  <div class="meta">
+    <span>Home <b class="mono">C:\src\AIPM</b></span>
+    <span>Remote <b class="mono">github.com/esscott1/AIPM</b></span>
+    <span>Status <span class="pill design">Design, pre-scaffold</span></span>
+    <span>As of <b>Oct 23, 2026</b></span>
+  </div>
+</header>
+
+<div class="strip" role="list">
+  <div role="listitem"><span class="n">3</span><span class="l">projects managed</span></div>
+  <div role="listitem"><span class="n">2 + 1</span><span class="l">adopted + new</span></div>
+  <div role="listitem"><span class="n">3</span><span class="l">subagents per team</span></div>
+  <div role="listitem"><span class="n">5</span><span class="l">build phases</span></div>
+</div>
+
+<section id="architecture" aria-labelledby="h-arch">
+  <div class="sec-head">
+    <div class="eyebrow">Architecture</div>
+    <h2 id="h-arch">You talk to one PM; the fleet server runs the teams</h2>
+    <p class="lede">Select any box to see what it does and where it lives.</p>
+  </div>
+  <div class="arch">
+    <div class="diagram">
+      <svg viewBox="0 0 1000 700" role="img" aria-label="AIPM architecture: You, PM session, fleet MCP server, three project teams with subagents, and GitHub">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0L10 5L0 10z"/></marker>
+          <marker id="ahn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-new" d="M0 0L10 5L0 10z"/></marker>
+        </defs>
+
+        <!-- wires -->
+        <path class="wire" d="M500 64V92" marker-end="url(#ah)"/>
+        <path class="wire" d="M500 158V190" marker-end="url(#ah)"/>
+        <path class="wire" d="M500 274V302M170 302H500"/>
+        <path class="wire" d="M170 302V334" marker-end="url(#ah)"/>
+        <path class="wire" d="M500 302V334" marker-end="url(#ah)"/>
+        <path class="wire-new" d="M500 302H830V334" marker-end="url(#ahn)"/>
+        <path class="wire" d="M170 590V626" marker-end="url(#ah)"/>
+        <path class="wire" d="M500 590V626" marker-end="url(#ah)"/>
+        <path class="wire" d="M830 590V626" marker-end="url(#ah)"/>
+        <text class="t-edge" x="512" y="82">commands, approvals</text>
+        <text class="t-edge" x="512" y="180">MCP tools</text>
+        <text class="t-edge" x="190" y="294">resume each team in its own repo folder</text>
+        <text class="t-edge-new" x="842" y="324">create_project</text>
+        <text class="t-edge" x="182" y="614">push branch; PR after AIPM approves</text>
+
+        <!-- You -->
+        <g class="node" data-node="you" tabindex="0" role="button" aria-label="You">
+          <rect class="n-box hl" x="430" y="20" width="140" height="44" rx="8"/>
+          <text class="t-name" x="500" y="47" text-anchor="middle">You</text>
+        </g>
+
+        <!-- PM -->
+        <g class="node" data-node="pm" tabindex="0" role="button" aria-label="PM session">
+          <rect class="n-tint hl" x="280" y="92" width="440" height="66" rx="8"/>
+          <text class="t-name" x="500" y="119" text-anchor="middle">AIPM PM session (Claude Code)</text>
+          <text class="t-mono" x="500" y="141" text-anchor="middle">C:\src\AIPM · CLAUDE.md · projects.yaml · STATUS.md</text>
+        </g>
+
+        <!-- Fleet -->
+        <g class="node" data-node="fleet" tabindex="0" role="button" aria-label="Fleet MCP server">
+          <rect class="n-tint hl" x="280" y="190" width="440" height="84" rx="8"/>
+          <text class="t-name" x="500" y="217" text-anchor="middle">Fleet MCP server (Python, Agent SDK)</text>
+          <text class="t-sub" x="500" y="239" text-anchor="middle">dispatch · broadcast · create_project · standup</text>
+          <text class="t-mono" x="500" y="259" text-anchor="middle">sessions.json · jobs/ · token budgets</text>
+        </g>
+
+        <!-- MonteCarlo -->
+        <g class="node" data-node="mc" tabindex="0" role="button" aria-label="MonteCarlo project team">
+          <rect class="n-box hl" x="20" y="334" width="300" height="256" rx="10"/>
+          <text class="t-big" x="38" y="364">MonteCarlo</text>
+          <text class="t-mono" x="38" y="386">C:\src\MonteCarlo</text>
+          <text class="t-mono" x="38" y="404">esscott1/MonteCarlo</text>
+          <rect class="n-tint" x="38" y="418" width="264" height="48" rx="8"/>
+          <text class="t-name" x="52" y="439" style="font-size:14px">Project team</text>
+          <text class="t-sub" x="52" y="456">lead session, cwd = repo</text>
+          <path class="wire-thin" d="M54 466V560M54 492H70M54 526H70M54 560H70"/>
+          <rect class="n-box" x="70" y="479" width="232" height="26" rx="6"/><text class="t-chip" x="82" y="496">spike · worktree prototype</text>
+          <rect class="n-box" x="70" y="513" width="232" height="26" rx="6"/><text class="t-chip" x="82" y="530">planner · plan doc</text>
+          <rect class="n-box" x="70" y="547" width="232" height="26" rx="6"/><text class="t-chip" x="82" y="564">researcher · findings</text>
+        </g>
+
+        <!-- job-search-assistant -->
+        <g class="node" data-node="js" tabindex="0" role="button" aria-label="job-search-assistant project team">
+          <rect class="n-box hl" x="350" y="334" width="300" height="256" rx="10"/>
+          <text class="t-big" x="368" y="364">job-search-assistant</text>
+          <text class="t-mono" x="368" y="386">C:\src\job-search-assistant</text>
+          <text class="t-mono" x="368" y="404">esscott1/job-search-assistant</text>
+          <rect class="n-tint" x="368" y="418" width="264" height="48" rx="8"/>
+          <text class="t-name" x="382" y="439" style="font-size:14px">Project team</text>
+          <text class="t-sub" x="382" y="456">lead session, cwd = repo</text>
+          <path class="wire-thin" d="M384 466V560M384 492H400M384 526H400M384 560H400"/>
+          <rect class="n-box" x="400" y="479" width="232" height="26" rx="6"/><text class="t-chip" x="412" y="496">spike · worktree prototype</text>
+          <rect class="n-box" x="400" y="513" width="232" height="26" rx="6"/><text class="t-chip" x="412" y="530">planner · plan doc</text>
+          <rect class="n-box" x="400" y="547" width="232" height="26" rx="6"/><text class="t-chip" x="412" y="564">researcher · findings</text>
+        </g>
+
+        <!-- otsconsulting (new) -->
+        <g class="node" data-node="ots" tabindex="0" role="button" aria-label="otsconsulting project team, new">
+          <rect class="n-new hl" x="680" y="334" width="300" height="256" rx="10"/>
+          <text class="t-big" x="698" y="364">otsconsulting</text>
+          <text class="t-mono" x="698" y="386">C:\src\otsconsulting</text>
+          <text class="t-mono" x="698" y="404">esscott1/otsconsulting (new)</text>
+          <rect class="n-tint" x="698" y="418" width="264" height="48" rx="8"/>
+          <text class="t-name" x="712" y="439" style="font-size:14px">Project team</text>
+          <text class="t-sub" x="712" y="456">lead session, cwd = repo</text>
+          <path class="wire-thin" d="M714 466V560M714 492H730M714 526H730M714 560H730"/>
+          <rect class="n-box" x="730" y="479" width="232" height="26" rx="6"/><text class="t-chip" x="742" y="496">spike · worktree prototype</text>
+          <rect class="n-box" x="730" y="513" width="232" height="26" rx="6"/><text class="t-chip" x="742" y="530">planner · plan doc</text>
+          <rect class="n-box" x="730" y="547" width="232" height="26" rx="6"/><text class="t-chip" x="742" y="564">researcher · findings</text>
+        </g>
+
+        <!-- GitHub -->
+        <g class="node" data-node="gh" tabindex="0" role="button" aria-label="GitHub">
+          <rect class="n-gh hl" x="20" y="626" width="960" height="48" rx="8"/>
+          <text class="t-name" x="500" y="656" text-anchor="middle">GitHub esscott1 · branches and PRs; merges to main need your approval</text>
+        </g>
+      </svg>
+    </div>
+
+    <aside class="detail" id="detail" aria-live="polite">
+      <div class="eyebrow" id="d-kind">Component</div>
+      <h3 id="d-title">Fleet MCP server</h3>
+      <div class="where" id="d-where"></div>
+      <p id="d-body"></p>
+      <ul id="d-list"></ul>
+      <div class="cmd" id="d-cmd" hidden></div>
+      <p class="hint">Dashed amber = new project, created by <code>create_project</code>.</p>
+    </aside>
+  </div>
+</section>
+
+<section id="teams" aria-labelledby="h-teams">
+  <div class="sec-head">
+    <div class="eyebrow">Project teams</div>
+    <h2 id="h-teams">Three teams, each scoped to one repo</h2>
+    <p class="lede">Every team is a lead session that keeps context in its repo and spawns subagents for spikes, planning and research. Subagents inherit the team's folder and permissions, never another repo's. Each team commits to its feature branches and creates, merges and rebases its own worktrees according to its CLAUDE.md and memory.md. When AIPM reports a merge, the team deletes the merged branch and its worktree, on a clean-up command or by its own CLAUDE.md rule.</p>
+  </div>
+  <div class="teams">
+    <article class="team">
+      <div class="team-head"><h3>MonteCarlo</h3><span class="pill adopt">Adopt</span></div>
+      <dl class="kv"><dt>Local</dt><dd>C:\src\MonteCarlo</dd><dt>Remote</dt><dd>esscott1/MonteCarlo</dd><dt>Onboard</dt><dd>register path, import session ID</dd></dl>
+      <div class="subs">
+        <div class="sub"><b>spike</b><span>Prototype in its own worktree on a spike/* branch</span></div>
+        <div class="sub"><b>planner</b><span>Read-only; writes docs/plans/</span></div>
+        <div class="sub"><b>researcher</b><span>Read-only + web; writes docs/research/</span></div>
+      </div>
+    </article>
+    <article class="team">
+      <div class="team-head"><h3>job-search-assistant</h3><span class="pill adopt">Adopt</span></div>
+      <dl class="kv"><dt>Local</dt><dd>C:\src\job-search-assistant</dd><dt>Remote</dt><dd>esscott1/job-search-assistant</dd><dt>Onboard</dt><dd>register path, import session ID</dd></dl>
+      <div class="subs">
+        <div class="sub"><b>spike</b><span>Prototype in its own worktree on a spike/* branch</span></div>
+        <div class="sub"><b>planner</b><span>Read-only; writes docs/plans/</span></div>
+        <div class="sub"><b>researcher</b><span>Read-only + web; writes docs/research/</span></div>
+      </div>
+    </article>
+    <article class="team is-new">
+      <div class="team-head"><h3>otsconsulting</h3><span class="pill new">New · bootstrap</span></div>
+      <dl class="kv"><dt>Local</dt><dd>C:\src\otsconsulting</dd><dt>Remote</dt><dd>esscott1/otsconsulting</dd><dt>Onboard</dt><dd>create_project, then kickoff task</dd></dl>
+      <div class="subs">
+        <div class="sub"><b>spike</b><span>Prototype in its own worktree on a spike/* branch</span></div>
+        <div class="sub"><b>planner</b><span>Read-only; writes docs/plans/</span></div>
+        <div class="sub"><b>researcher</b><span>Read-only + web; writes docs/research/</span></div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section id="bootstrap" aria-labelledby="h-boot">
+  <div class="sec-head">
+    <div class="eyebrow">New-project bootstrap</div>
+    <h2 id="h-boot">One ask becomes a source-controlled repo with a working team</h2>
+  </div>
+  <div class="flow-card">
+    <ol class="flow">
+      <li class="gate"><strong>Propose</strong><p>PM drafts name, visibility, goal and template. <span class="pill gate">Your approval</span></p></li>
+      <li><strong>Scaffold</strong><p><code>C:\src\&lt;name&gt;</code> with README, .gitignore, CLAUDE.md, .claude/agents/</p></li>
+      <li><strong>Init</strong><p><code>git init -b main</code> and first commit</p></li>
+      <li><strong>Publish</strong><p><code>gh repo create esscott1/&lt;name&gt; --private --source . --remote origin --push</code></p></li>
+      <li><strong>Register</strong><p>Append the entry to <code>projects.yaml</code></p></li>
+      <li><strong>Staff</strong><p>Start the team session, save its ID, hand it a kickoff task</p></li>
+    </ol>
+    <p class="flow-note">Needs the <code>gh</code> CLI installed and signed in on your machine. The fleet server never stores a GitHub token.</p>
+  </div>
+</section>
+
+<section id="phases" aria-labelledby="h-phases">
+  <div class="sec-head">
+    <div class="eyebrow">Build plan</div>
+    <h2 id="h-phases">Five phases, each with a clear exit test</h2>
+  </div>
+  <div class="phases">
+    <div class="phase first"><span class="num">Phase 1 · next</span><h3>Scaffold</h3><p>C:\src\AIPM repo, registry, fleet server with dispatch and status, session persistence, /adopt-project, pause/resume, reconcile before every dispatch.</p><p class="done"><b>Done when</b> MonteCarlo is adopted with /adopt-project, and the PM sends it a task and gets a report back.</p></div>
+    <div class="phase"><span class="num">Phase 2</span><h3>Parallel</h3><p>Background jobs, broadcast, worktrees, budgets.</p><p class="done"><b>Done when</b> one ask runs in all three repos at once.</p></div>
+    <div class="phase"><span class="num">Phase 3</span><h3>Bootstrap</h3><p>create_project, templates, seeded subagents.</p><p class="done"><b>Done when</b> otsconsulting exists on GitHub with a working team.</p></div>
+    <div class="phase"><span class="num">Phase 4</span><h3>Visibility</h3><p>/standup, STATUS.md roll-up, optional Jira sync, and this page becomes the live AIPM Control Panel in the Claude desktop app.</p><p class="done"><b>Done when</b> one command, or the control panel, shows status across all repos and approves a PR.</p></div>
+    <div class="phase"><span class="num">Phase 5</span><h3>Schedule</h3><p>Nightly status run as a scheduled task.</p><p class="done"><b>Done when</b> the board is current each morning.</p></div>
+  </div>
+</section>
+
+<div class="two">
+  <section class="panel" aria-labelledby="h-guard">
+    <div class="eyebrow">Guardrails</div>
+    <h2 id="h-guard">Teams own branches, AIPM gates PRs, you gate main</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Action</th><th>Decided by</th></tr></thead>
+        <tbody>
+          <tr><td>Commits to feature branches</td><td><span class="pill auto">Team</span> per CLAUDE.md, memory.md</td></tr>
+          <tr><td>Worktrees: create, merge, rebase</td><td><span class="pill auto">Team</span> per CLAUDE.md, memory.md</td></tr>
+          <tr><td>Clean up: delete merged feature branches and their worktrees</td><td><span class="pill auto">Team</span> when told, or per CLAUDE.md after AIPM reports the merge</td></tr>
+          <tr><td>Code edits, tests, plans, research</td><td><span class="pill auto">Team</span></td></tr>
+          <tr><td>Open a pull request</td><td><span class="pill adopt">AIPM</span> approves request</td></tr>
+          <tr><td>Merge to main</td><td><span class="pill gate">You</span></td></tr>
+          <tr><td>Create a GitHub repo, change visibility</td><td><span class="pill gate">You</span></td></tr>
+          <tr><td>Delete unmerged branches, files or repos</td><td><span class="pill gate">You</span></td></tr>
+          <tr><td>Job exceeds turn or token budget</td><td>Stops, PM reports</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <section class="panel" aria-labelledby="h-tools">
+    <div class="eyebrow">Fleet MCP tools</div>
+    <h2 id="h-tools">What the PM can call</h2>
+    <div class="tools">
+      <div class="tool"><code>list_projects</code><span>Registry entries and last activity</span></div>
+      <div class="tool"><code>adopt / retire / pause / resume</code><span>Bring a repo under AIPM, release it, or hold it while you work directly</span></div>
+      <div class="tool"><code>reconcile(project)</code><span>Catch up on work done outside AIPM before the next dispatch</span></div>
+      <div class="tool"><code>dispatch(project, instruction, mode)</code><span>Run a task in one team; returns a job ID</span></div>
+      <div class="tool"><code>broadcast(instruction, projects)</code><span>Same ask across several teams in parallel</span></div>
+      <div class="tool"><code>request_pr / approve_pr / reject_pr</code><span>Team asks to open a PR; the PM approves or sends it back</span></div>
+      <div class="tool"><code>notify_merged(project, pr)</code><span>Tells a team its PR merged so it can clean up</span></div>
+      <div class="tool"><code>job_status / get_report / cancel</code><span>Track and collect background work</span></div>
+      <div class="tool"><code>create_project(name, visibility, template)</code><span>The bootstrap flow above</span></div>
+      <div class="tool"><code>standup()</code><span>git log, open PRs, last report and tokens used per repo</span></div>
+    </div>
+  </section>
+</div>
+
+<footer>Sessions are stored per folder, so the fleet server always resumes a team from its registered repo path. Moving a repo means re-registering it.</footer>
+
+</div>
+
+<script>
+(function () {
+  var D = {
+    you: { kind: "Operator", title: "You", where: "Any Claude Code terminal", body: "You give the PM goals and commands and approve anything hard to reverse.",
+      list: ["Approve merges, repo creation and deletions", "Read STATUS.md or ask for a standup", "Jump into any team with claude --resume from its repo"] },
+    pm: { kind: "Component", title: "PM session", where: "C:\\src\\AIPM", body: "A Claude Code session whose CLAUDE.md makes it the program manager. It never edits project code itself.",
+      list: ["Turns your asks into dispatch and broadcast calls", "Keeps STATUS.md current from team reports", "Approves or rejects pull request requests from teams", "Tells teams when their PR merged, which triggers cleanup", "Escalates merges to main and repo creation to you", "Slash commands: /standup, /dispatch, /new-project"],
+      cmd: "Example: /dispatch montecarlo \"plan the client demo\"" },
+    fleet: { kind: "Component", title: "Fleet MCP server", where: "C:\\src\\AIPM\\fleet\\server.py", body: "A Python MCP server built on the Claude Agent SDK. It runs each team with cwd set to the repo and resume set to the saved session ID.",
+      list: ["Stores project to session ID in sessions.json", "Runs long tasks as background jobs", "Enforces max turns and tokens per job, and reports tokens used", "Implements create_project with git and gh"] },
+    mc: { kind: "Project team · adopt", title: "MonteCarlo", where: "C:\\src\\MonteCarlo → esscott1/MonteCarlo", body: "Existing repo, adopted by registering its path. An existing session can be imported so the team keeps its history.",
+      list: ["Owns commits, worktrees, merges and rebases per its CLAUDE.md and memory.md", "Requests a PR from AIPM when a branch is ready", "Spawns spike, planner and researcher subagents", "Ends every task with a structured report"] },
+    js: { kind: "Project team · adopt", title: "job-search-assistant", where: "C:\\src\\job-search-assistant → esscott1/job-search-assistant", body: "Existing work, adopted the same way. Open question: own repo, or stay inside ClaudeCowork.",
+      list: ["Owns commits, worktrees, merges and rebases per its CLAUDE.md and memory.md", "Requests a PR from AIPM when a branch is ready", "Spawns spike, planner and researcher subagents", "Ends every task with a structured report"] },
+    ots: { kind: "Project team · new", title: "otsconsulting", where: "C:\\src\\otsconsulting → esscott1/otsconsulting", body: "Does not exist yet. AIPM creates it with create_project: folder, git init, GitHub remote, push, register, then a kickoff task.",
+      list: ["Seeded with CLAUDE.md, memory.md and the three subagents from templates", "Owns its commits and worktrees once staffed", "Repo creation waits for your approval", "First task: produce a plan for the site"],
+      cmd: "gh repo create esscott1/otsconsulting --private --source . --remote origin --push" },
+    gh: { kind: "Source of truth", title: "GitHub", where: "github.com/esscott1", body: "Teams push their own feature branches. A PR opens only after AIPM approves it, and merges to main need you.",
+      list: ["One branch per task, spike/* for throwaway work", "PR description carries the team's report", "AIPM itself lives at esscott1/AIPM"] }
+  };
+  var nodes = document.querySelectorAll(".node");
+  function show(key) {
+    var d = D[key]; if (!d) return;
+    document.getElementById("d-kind").textContent = d.kind;
+    document.getElementById("d-title").textContent = d.title;
+    document.getElementById("d-where").textContent = d.where;
+    document.getElementById("d-body").textContent = d.body;
+    var ul = document.getElementById("d-list"); ul.innerHTML = "";
+    d.list.forEach(function (t) { var li = document.createElement("li"); li.textContent = t; ul.appendChild(li); });
+    var c = document.getElementById("d-cmd");
+    if (d.cmd) { c.textContent = d.cmd; c.hidden = false; } else { c.hidden = true; }
+    nodes.forEach(function (n) { n.classList.toggle("sel", n.getAttribute("data-node") === key); n.setAttribute("aria-pressed", n.getAttribute("data-node") === key ? "true" : "false"); });
+  }
+  nodes.forEach(function (n) {
+    n.addEventListener("click", function () { show(n.getAttribute("data-node")); });
+    n.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(n.getAttribute("data-node")); } });
+  });
+  show("fleet");
+})();
+</script>
