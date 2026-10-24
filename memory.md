@@ -11,4 +11,5 @@ Decisions made during design (Oct 2026). Newest at the bottom.
 - Personal use on my Max plan: teams run through the unmodified `claude` CLI headless; no API key. Switch to API keys if AIPM is ever offered to others.
 - Two interfaces: the PM session (Claude Code) and an AIPM Control Panel artifact in the Claude desktop app (Phase 4).
 - Existing repos are adopted with `/adopt-project` (Phase 1). `reconcile` runs before every dispatch so work done outside AIPM (VS Code, Remote Control, merges I do myself) is picked up.
-- Repo lives at `C:\src\AIPM`; git operations run from WSL Ubuntu at `/mnt/c/src/AIPM`.
+- Repo lives at `C:\src\AIPM`. The initial commit and push were done from WSL Ubuntu at `/mnt/c/src/AIPM`.
+- The fleet server runs natively on Windows, the same environment as `C:\src`, VS Code and the Claude desktop app. One session store and one set of paths; teams use the Windows `claude` and `gh` sign-ins and Git Bash. Claude Code sessions for adopted repos never run in WSL, which has its own session store and `/mnt/c` paths.

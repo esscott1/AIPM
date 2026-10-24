@@ -41,7 +41,7 @@ You talk only to the PM session. The PM calls the fleet server's MCP tools, and 
 | Component | Lives in | Responsibility |
 | --- | --- | --- |
 | PM session | `C:\src\AIPM` (Claude Code) | Takes your commands, dispatches work, keeps `STATUS.md` current, approves PR requests, asks you before merges and repo creation |
-| Fleet MCP server | `C:\src\AIPM\fleet` (Python) | Runs project team sessions, stores session IDs, tracks background jobs and token budgets |
+| Fleet MCP server | `C:\src\AIPM\fleet` (Python, native Windows) | Runs project team sessions, stores session IDs, tracks background jobs and token budgets |
 | Registry | `projects.yaml` | Repo path, GitHub remote, goal, model, permission mode, token budget, status per project |
 | Project teams | One per repo | Claude Code session with `cwd` = the repo; uses that repo's CLAUDE.md, memory.md, skills and hooks |
 | Subagents | Each repo's `.claude/agents/` | Spike, planner, researcher; spawned by the project team for scoped tasks |
@@ -59,6 +59,8 @@ You talk only to the PM session. The PM calls the fleet server's MCP tools, and 
 **Lifecycle tools:** `adopt_project`, `retire_project`, `pause(project)`, `resume(project)` and `reconcile(project)`, which brings AIPM up to date with anything done in the repo outside it.
 
 **State:** git is the source of truth (a branch and PR per task). `sessions.json` maps project to session ID, `jobs/` holds job logs, and `STATUS.md` is the rolled-up board.
+
+**Host: Windows.** The fleet server runs natively on Windows, the same environment as `C:\src`, VS Code and the Claude desktop app. That keeps one Claude Code session store (`%USERPROFILE%\.claude`) and one set of paths, so existing sessions can be imported, forks and `reconcile` work with sessions you run in VS Code, and the Control Panel connects to it directly as a local MCP server. Teams use your Windows `claude` and `gh` sign-ins, and their shell commands run in Git Bash. WSL is fine for one-off git and `gh` commands, but Claude Code sessions for an adopted repo always run on Windows: WSL keeps a separate session store and sees the repos as `/mnt/c/...`, so sessions don't carry across.
 
 ## Managed projects
 
@@ -231,4 +233,4 @@ AIPM is for personal use on your Max plan. The fleet server runs the unmodified 
 
 - [ ] Does job-search-assistant get its own repo, or stay inside `esscott1/ClaudeCowork`?
 - [ ] Visibility for new repos by default: private or public (portfolio).
-- [ ] Run the fleet server on Windows or in WSL (affects paths and which `claude`/`gh` sign-in it uses).
+- [x] Fleet server host: native Windows (see Components).

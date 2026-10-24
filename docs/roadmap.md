@@ -22,7 +22,8 @@ Five phases. Each ends with a test that proves it works before the next starts. 
 
 Goal: one PM session can drive one adopted team end to end.
 
-- [ ] Decide where the fleet server runs: Windows or WSL
+- [x] Decide where the fleet server runs: native Windows
+- [ ] Windows prerequisites: Python 3.12+, Git for Windows (Git Bash), `claude` and `gh` signed in on Windows
 - [ ] `CLAUDE.md` gains the PM role, approval gates and "never edit project code" rule
 - [ ] `projects.yaml` schema: path, remote, goal, model, permission_mode, budget (turns, tokens), session_id, status, last_seen_commit
 - [ ] `fleet/server.py`: MCP server exposing `list_projects`, `project_status`, `dispatch`, `get_report`
