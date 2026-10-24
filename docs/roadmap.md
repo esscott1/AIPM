@@ -24,12 +24,12 @@ Five phases. Each ends with a test that proves it works before the next starts. 
 Goal: one PM session can drive one adopted team end to end.
 
 - [x] Decide where the fleet server runs: native Windows
-- [ ] Windows prerequisites: Python 3.12+, Git for Windows (Git Bash), `claude` and `gh` signed in on Windows
+- [x] Windows prerequisites: Python 3.12+, Git for Windows (Git Bash), `claude` and `gh` signed in on Windows (`uv run python -m fleet.doctor`)
 - [ ] `CLAUDE.md` gains the PM role, approval gates and "never edit project code" rule
-- [ ] `projects.yaml` schema: path, remote, goal, model, permission_mode, budget (turns, tokens), session_id, status, last_seen_commit
+- [x] `projects.yaml` schema: path, remote, goal, model, permission_mode, budget (turns, tokens), status. Local and written by fleet tools; `session_id` and `last_seen_commit` live in `sessions.json`
 - [ ] `fleet/server.py`: MCP server exposing `list_projects`, `project_status`, `dispatch`, `get_report`
 - [ ] Teams run through the unmodified `claude` CLI headless (`-p --resume --output-format json`), `cwd` = repo
-- [ ] `sessions.json` persistence; resume always from the registered path
+- [ ] `sessions.json` persistence (`session_id`, `last_seen_commit`); resume always from the registered path
 - [ ] Structured end-of-task report (changed, tests, blockers, next step, tokens used)
 - [ ] `reconcile(project)`: fetch, diff since `last_seen_commit`, detect merged PRs via `gh`, brief the team; runs before every dispatch
 - [ ] `pause` / `resume`; dispatches to a paused project wait

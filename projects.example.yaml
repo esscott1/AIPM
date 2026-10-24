@@ -1,0 +1,15 @@
+# Example AIPM registry. The real one is projects.yaml, which fleet tools write
+# (/adopt-project, create_project, pause, resume, /retire-project) and which
+# stays out of git. Per-run state (session_id, last_seen_commit) lives in
+# fleet/sessions.json, not here.
+projects:
+  montecarlo:
+    path: C:\src\MonteCarlo
+    remote: https://github.com/esscott1/MonteCarlo.git
+    goal: Featured portfolio project; client-ready simulation
+    model: sonnet
+    permission_mode: acceptEdits   # plan | acceptEdits; bypassPermissions is rejected
+    budget:
+      max_turns: 40
+      max_tokens_per_job: 1000000
+    status: active                 # active | paused

@@ -13,7 +13,7 @@ Phase 1 (scaffold). Work only on unchecked items in `docs/roadmap.md` under Phas
 - Record decisions and gotchas in `memory.md`.
 - The fleet server must never read, store or forward Claude or GitHub credentials. Teams run through the unmodified `claude` CLI signed in with my own account.
 - Never use `bypassPermissions`.
-- Secrets and runtime state stay out of git: `fleet/sessions.json`, `fleet/jobs/`, `.env`.
+- Secrets and runtime state stay out of git: `projects.yaml`, `fleet/sessions.json`, `fleet/jobs/`, `.env`.
 
 ## "clean up" command
 

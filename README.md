@@ -7,7 +7,17 @@ One Claude Code session that runs a project team in each of my repos, so I stop 
 - **Project teams** own their branches and worktrees and spawn subagents for spikes, planning and research.
 - **Reconcile** keeps AIPM in sync with work done directly in a repo, outside AIPM.
 
-**Status:** Phase 0 — design documents. Next: Phase 1 scaffold.
+**Status:** Phase 1 — scaffold in progress. See the [roadmap](docs/roadmap.md).
+
+## Setup
+
+Requires Python 3.12+, [uv](https://docs.astral.sh/uv/), Git for Windows, and `claude` and `gh` signed in.
+
+```
+uv sync
+uv run python -m fleet.doctor     # add --live for one headless claude call
+uv run pytest
+```
 
 ## Docs
 

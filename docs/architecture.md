@@ -42,7 +42,7 @@ You talk only to the PM session. The PM calls the fleet server's MCP tools, and 
 | --- | --- | --- |
 | PM session | `C:\src\AIPM` (Claude Code) | Takes your commands, dispatches work, keeps `STATUS.md` current, approves PR requests, asks you before merges and repo creation |
 | Fleet MCP server | `C:\src\AIPM\fleet` (Python, native Windows) | Runs project team sessions, stores session IDs, tracks background jobs and token budgets |
-| Registry | `projects.yaml` | Repo path, GitHub remote, goal, model, permission mode, token budget, status per project |
+| Registry | `projects.yaml` (local, not in git) | Repo path, GitHub remote, goal, model, permission mode, token budget, status per project; written by the fleet tools |
 | Project teams | One per repo | Claude Code session with `cwd` = the repo; uses that repo's CLAUDE.md, memory.md, skills and hooks |
 | Subagents | Each repo's `.claude/agents/` | Spike, planner, researcher; spawned by the project team for scoped tasks |
 
@@ -58,7 +58,12 @@ You talk only to the PM session. The PM calls the fleet server's MCP tools, and 
 
 **Lifecycle tools:** `adopt_project`, `retire_project`, `pause(project)`, `resume(project)` and `reconcile(project)`, which brings AIPM up to date with anything done in the repo outside it.
 
-**State:** git is the source of truth (a branch and PR per task). `sessions.json` maps project to session ID, `jobs/` holds job logs, and `STATUS.md` is the rolled-up board.
+**State:** git is the source of truth (a branch and PR per task). `jobs/` holds job logs, and `STATUS.md` is the rolled-up board. Each field has one home:
+
+- `projects.yaml` is the registry. `/adopt-project` and `create_project` add entries, `pause` and `resume` set `status`, and `/retire-project` removes entries. You can edit a budget or model by hand, but never need to.
+- `fleet/sessions.json` holds what changes on every run: each project's `session_id` and `last_seen_commit`.
+
+Both files are machine-local and stay out of git, since they hold `C:\src` paths and change without a PR. `projects.example.yaml` documents the registry format. If this machine is lost, the registry is rebuilt by adopting each repo again; the repos themselves are on GitHub.
 
 **Host: Windows.** The fleet server runs natively on Windows, the same environment as `C:\src`, VS Code and the Claude desktop app. That keeps one Claude Code session store (`%USERPROFILE%\.claude`) and one set of paths, so existing sessions can be imported, forks and `reconcile` work with sessions you run in VS Code, and the Control Panel connects to it directly as a local MCP server. Teams use your Windows `claude` and `gh` sign-ins, and their shell commands run in Git Bash. WSL is fine for one-off git and `gh` commands, but Claude Code sessions for an adopted repo always run on Windows: WSL keeps a separate session store and sees the repos as `/mnt/c/...`, so sessions don't carry across.
 
@@ -72,22 +77,26 @@ Two existing repos are adopted at launch; otsconsulting is created by AIPM as it
 | job-search-assistant | `C:\src\job-search-assistant` | `esscott1/job-search-assistant` | Adopt: same as above |
 | otsconsulting | `C:\src\otsconsulting` | `esscott1/otsconsulting` (new) | Bootstrap via `create_project` |
 
-Local paths assume everything sits under `C:\src`; adjust in `projects.yaml`.
+Local paths assume everything sits under `C:\src`; the path is recorded when a repo is adopted or created.
 
-Example registry entry:
+Example registry entry (see `projects.example.yaml`):
 
 ```yaml
 projects:
   montecarlo:
     path: C:\src\MonteCarlo
-    remote: git@github.com:esscott1/MonteCarlo.git
+    remote: https://github.com/esscott1/MonteCarlo.git
     goal: Featured portfolio project; client-ready simulation
     model: sonnet
-    permission_mode: acceptEdits
+    permission_mode: acceptEdits   # plan | acceptEdits; bypassPermissions is rejected
     budget: { max_turns: 40, max_tokens_per_job: 1000000 }
-    session_id: null          # filled by the fleet server
-    status: active            # active | paused
-    last_seen_commit: null    # set by reconcile
+    status: active                 # active | paused
+```
+
+The matching `fleet/sessions.json` entry, written by the fleet server and `reconcile`:
+
+```json
+{ "montecarlo": { "session_id": null, "last_seen_commit": null } }
 ```
 
 ## Adopting existing projects
@@ -99,7 +108,7 @@ A new AIPM knows nothing about existing repos, so each one is adopted explicitly
 3. **Check team rules:** if `CLAUDE.md` or `memory.md` is missing, offer to create it. If one exists, offer to add a short AIPM section covering PR requests, cleanup after a merge and the end-of-task report. Existing content is never overwritten. If `main` has no "Protect main" ruleset, offer to apply it.
 4. **Pick up history:** list the existing Claude Code sessions for that folder and let you import one as the team's session, so the team keeps its context, or start fresh.
 5. **Seed subagents:** add spike, planner and researcher only where they are missing.
-6. **Register:** write the `projects.yaml` entry with goal, token budget, `status: active` and the current commit as `last_seen_commit`.
+6. **Register:** write the `projects.yaml` entry with goal, token budget and `status: active`, and record the current commit as `last_seen_commit` in `sessions.json`.
 7. **Health check:** dispatch "report your current state", so the team's first line appears in `STATUS.md`.
 
 `/retire-project` removes a repo from AIPM (registry entry and session mapping) without touching the repo itself.
