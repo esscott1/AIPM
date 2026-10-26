@@ -17,3 +17,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# claude code: personal settings stay local (skills in .claude/skills are shared)
+.claude/settings.local.json
