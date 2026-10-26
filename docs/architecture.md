@@ -4,7 +4,7 @@ As of 2026-10-25 · Eric Scott
 
 ## Summary
 
-AIPM is one Claude Code session that acts as program manager over every repo, so you stop switching between per-repo sessions. It talks to a small MCP server (the fleet server) that runs one persistent project team per repo through the Claude Agent SDK / Claude Code CLI.
+AIPM is one Claude Code session that acts as program manager over every repo, so you stop switching between per-repo sessions. It talks to a small MCP server (the fleet server) that runs one persistent project team per repo through the unmodified `claude` CLI (`claude -p`), not the Agent SDK library. The fleet server is Python 3.12+ on Windows.
 
 - **Managed at launch:** MonteCarlo, job-search-assistant, and otsconsulting (created by AIPM).
 - **Project teams** keep long-lived context in their own repo and spawn subagents for spikes, planning and research.
@@ -31,17 +31,17 @@ flowchart TD
         otsteam[Project team] --> otss1[spike] & otss2[planner] & otss3[researcher]
     end
 
-    mc & js & ots -->|push branch; PR after AIPM approves| gh[(GitHub esscott1<br/>merges to main need your approval)]
+    mc & js & ots -->|push branch; PR after AIPM approves| gh[(GitHub esscott1<br/>merges to the default branch need your approval)]
 ```
 
-You talk only to the PM session. The PM calls the fleet server's MCP tools, and the fleet server resumes each project team inside its own repo folder. Teams commit to and push their own feature branches; the PM approves each pull request before it is opened, and nothing merges to `main` without you.
+You talk only to the PM session. The PM calls the fleet server's MCP tools, and the fleet server resumes each project team inside its own repo folder. Teams commit to and push their own feature branches; the PM approves each pull request before it is opened, and nothing merges to the default branch without you. The default branch is whatever git reports (`main`, `master`, or another name). Do not assume the name.
 
 ## Components
 
 | Component | Lives in | Responsibility |
 | --- | --- | --- |
 | PM session | `C:\src\AIPM` (Claude Code) | Takes your commands, dispatches work, keeps `STATUS.md` current, approves PR requests, asks you before merges and repo creation |
-| Fleet MCP server | `C:\src\AIPM\fleet` (Python, native Windows) | Runs project team sessions, stores session IDs, tracks background jobs and token budgets |
+| Fleet MCP server | `C:\src\AIPM\fleet` (Python 3.12+, native Windows) | Runs project teams through the unmodified `claude` CLI, not the Agent SDK library; stores session IDs, tracks background jobs and token budgets |
 | Registry | `projects.yaml` (local, not in git) | Repo path, GitHub remote, goal, model, permission mode, token budget, status per project; written by the fleet tools |
 | Project teams | One per repo | Claude Code session with `cwd` = the repo; uses that repo's CLAUDE.md, memory.md, skills and hooks |
 | Subagents | Each repo's `.claude/agents/` | Spike, planner, researcher; spawned by the project team for scoped tasks |
@@ -70,7 +70,7 @@ These files are machine-local and stay out of git, since they hold `C:\src` path
 
 ## Managed projects
 
-Two existing repos are adopted at launch; otsconsulting is created by AIPM as its first bootstrap.
+Two existing repos are adopted at launch; otsconsulting is created by AIPM as its first bootstrap. job-search-assistant is its own repo (`C:\src\job-search-assistant`, `esscott1/job-search-assistant`). It does not live inside `esscott1/ClaudeCowork`.
 
 | Project | Local path | GitHub remote | Onboarding |
 | --- | --- | --- | --- |
@@ -94,7 +94,7 @@ projects:
     status: active                 # active | paused
 ```
 
-The matching `fleet/sessions.json` entry, written by the fleet server and `reconcile`:
+The matching `fleet/sessions.json` entry. Adoption writes `last_seen_commit` as the default branch's current commit and leaves `session_id` empty. The fleet server fills `session_id` after the first run. `reconcile` reads `last_seen_commit`; it does not create it:
 
 ```json
 { "montecarlo": { "session_id": null, "last_seen_commit": null } }
@@ -107,7 +107,7 @@ The matching `fleet/sessions.json` entry, written by the fleet server and `recon
 1. **Checks:** the project exists, isn't paused, its folder exists, and it has no other job running. A project runs one job at a time, because two runs resuming one session would fork its history. A dispatch to a paused project starts nothing: it reminds you the project is paused and not taking new work, and saves the task to the project's queue (see Pause and resume).
 2. **Mode:** the project's `permission_mode` is the ceiling. A dispatch may ask for `plan` on an `acceptEdits` project, never the reverse.
 3. **Run:** the fleet server runs `claude -p <task> --output-format json --permission-mode <mode> --model <model> --json-schema <report>` in the repo folder, adding `--resume <session_id>` once the team has a session and `--max-turns` only if the project sets one.
-4. **Brief:** each task carries a short AIPM brief: follow the repo's CLAUDE.md and memory.md, work on a feature branch, don't open a pull request, finish with the report. It goes in the prompt rather than `--append-system-prompt`, which is recorded once per session and would never reach existing teams if it changed. A team with no session yet (a fresh start) also gets an orientation ahead of its first task: read the project's `context_docs` first.
+4. **Brief:** each task carries a short AIPM brief: follow the repo's CLAUDE.md and memory.md, work on a feature branch, never on the default branch, don't open a pull request, finish with the report. It goes in the prompt rather than `--append-system-prompt`, which is recorded once per session and would never reach existing teams if it changed. A team with no session yet (a fresh start) also gets an orientation ahead of its first task: read the project's `context_docs` first.
 5. **Result:** the job record in `fleet/jobs/<id>.json` ends as `succeeded` with the report, or `failed` with the reason. The returned `session_id` is saved to `sessions.json`.
 
 | Outcome | What happens |
@@ -129,10 +129,10 @@ The matching `fleet/sessions.json` entry, written by the fleet server and `recon
 
 A new AIPM knows nothing about existing repos, so each one is adopted explicitly with the `/adopt-project` skill. It is built in Phase 1, because Phase 1's exit test needs MonteCarlo adopted.
 
-**Adopting registers a repo; it never changes it.** Adoption writes only AIPM's own state (`projects.yaml` and `sessions.json`). It adds no files, branches or commits to the repo and changes none of its GitHub settings. Every change to an adopted repo comes from a task dispatched to its team. If you want the repo to gain a `memory.md`, the spike, planner and researcher subagents, or the "Protect main" ruleset, dispatch that as a task or apply the ruleset yourself. The team doesn't need an AIPM section in its `CLAUDE.md`, because every dispatch carries AIPM's rules in its brief.
+**Adopting registers a repo; it never changes it.** Adoption writes only AIPM's own state (`projects.yaml` and `sessions.json`). It adds no files, branches or commits to the repo and changes none of its GitHub settings. Every change to an adopted repo comes from a task dispatched to its team. If you want the repo to gain a `memory.md`, the spike, planner and researcher subagents, or protection on its default branch, dispatch that as a task or apply the protection yourself. The team doesn't need an AIPM section in its `CLAUDE.md`, because every dispatch carries AIPM's rules in its brief.
 
 1. **Find candidates:** scan `C:\src` for git repos not yet in `projects.yaml`, or take a path you give it.
-2. **Inspect the repo (read-only):** its remote, default branch (`main` or `master`), current branch, open branches and worktrees, and whether `CLAUDE.md` and `memory.md` exist.
+2. **Inspect the repo (read-only):** its remote, default branch (whatever git names it: `main`, `master`, or another name), current branch, open branches and worktrees, and whether `CLAUDE.md` and `memory.md` exist.
 3. **Pick the context docs:** list the Markdown files already in the repo (`CLAUDE.md`, `memory.md`, `README.md`, and plans such as `docs/architecture.md` or a roadmap) and let you choose the ones that are the project's plans and north stars. They are saved as the project's `context_docs` in `projects.yaml`.
 4. **Register:** write the `projects.yaml` entry (goal, model, permission mode, token budget, context docs, `status: active`). In `sessions.json`, record the default branch's current commit as `last_seen_commit` and no session.
 5. **Health check:** offer to dispatch "report your current state" (about 50k tokens).
@@ -147,10 +147,10 @@ A new AIPM knows nothing about existing repos, so each one is adopted explicitly
 
 1. **Propose:** PM drafts name, visibility, goal and template, and asks you to confirm.
 2. **Scaffold:** create `C:\src\<name>`, seed `README.md`, `.gitignore`, `CLAUDE.md` (goal, standards), `memory.md` and `.claude/agents/` (spike, planner, researcher).
-3. **Init:** `git init -b main`, first commit.
+3. **Init:** `git init`, first commit. The default branch keeps the name git assigns. Do not rename it to `main` or assume that name.
 4. **Publish:** `gh repo create esscott1/<name> --private --source . --remote origin --push`.
-5. **Protect main:** apply the "Protect main" ruleset to the new repo (see Guardrails).
-6. **Register:** append the entry to `projects.yaml`.
+5. **Protect the default branch:** apply the same protection as AIPM's "Protect main" ruleset (PR required, no force push, no deletion, no bypass) to the new repo's default branch, whatever it is named (see Guardrails).
+6. **Register:** append the entry to `projects.yaml`. In `sessions.json`, record the default branch's current commit as `last_seen_commit` and no session, the same as adoption.
 7. **Staff:** start the project team session in the new repo, save its session ID, and hand it a kickoff task (e.g. "produce a plan for the site").
 
 The `gh` CLI must be installed and signed in on your machine; the fleet server never stores a GitHub token.
@@ -173,7 +173,7 @@ Each project team is a lead session that owns its repo and delegates scoped work
 
 ## Guardrails
 
-Teams own their branches and worktrees, AIPM approves pull requests, and you approve merges to main and anything irreversible.
+Teams own their branches and worktrees, AIPM approves pull requests, and you approve merges to the default branch and anything irreversible.
 
 | Action | Who decides |
 | --- | --- |
@@ -182,7 +182,7 @@ Teams own their branches and worktrees, AIPM approves pull requests, and you app
 | Clean up: delete merged feature branches and their worktrees | Project team, when told to clean up or when its CLAUDE.md says to after AIPM reports the merge |
 | Code edits, tests, plans, research | Project team, automatically |
 | Open a pull request | AIPM approves the team's request |
-| Merge to `main` | You; enforced on GitHub by the "Protect main" ruleset (PR required, no bypass) |
+| Merge to the default branch | You; enforced on GitHub by branch protection on that branch, whatever it is named (PR required, no bypass) |
 | Create a GitHub repo, change visibility | You |
 | Delete unmerged branches, files or repos | You |
 | Go over a job's token cap | Flagged in the report; the job keeps running |
@@ -193,7 +193,7 @@ Teams own their branches and worktrees, AIPM approves pull requests, and you app
 - A team asks for a PR with `request_pr`; the PM checks the team's report against the task and approves or sends it back with a reason.
 - AIPM is the source of truth for merges: a team cleans up only branches AIPM has reported as merged, so unmerged work is never deleted by a team.
 - Cleanup deletes local branches with `git branch -d` only, never `-D`. A branch `-d` refuses (squash- or rebase-merged, or with commits after the merge) is skipped and reported for me to delete. Team templates carry the same rule.
-- **"Protect main" ruleset on GitHub** (GitHub Pro, so it applies to private repos): pull request required (0 approvals, since I can't approve my own PRs), no force pushes, no deleting `main`, and no bypass actors. Teams act through my GitHub sign-in, so allowing myself to bypass would let them bypass too. AIPM applies it to every repo it creates. Adoption never changes a repo's settings, so an adopted repo gets it only when you ask for it separately.
+- **Default-branch protection on GitHub** (GitHub Pro, so it applies to private repos): pull request required (0 approvals, since I can't approve my own PRs), no force pushes, no deleting the default branch, and no bypass actors. The branch may be named `main`, `master`, or something else; the rules follow that branch, not a hardcoded name. On `esscott1/AIPM` this protection is the "Protect main" ruleset, because that repo's default branch is `main`. Teams act through my GitHub sign-in, so allowing myself to bypass would let them bypass too. AIPM applies the same protection to every repo it creates, on that repo's default branch. Adoption never changes a repo's settings, so an adopted repo gets it only when you ask for it separately.
 - Teams start in `plan` or `acceptEdits` mode; `bypassPermissions` is never used.
 - Each job has a token cap from `projects.yaml` (default 100,000). For now it is report-only: a job that goes over is flagged, never stopped, so a team never fails mid-task on an AIPM limit. The Max plan's usage limit is the hard stop. `max_turns` is optional and unset by default.
 
@@ -223,7 +223,7 @@ You can still work on an adopted repo directly, for example in VS Code with the 
 1. **Pause the team.** In AIPM, `/pause montecarlo`, or Pause on the control panel. Let a running job finish or cancel it; new dispatches are refused with a reminder and saved to the queue.
 2. **Start a new session** in VS Code in `C:\src\MonteCarlo`. Don't resume the team's session. If you want its context, fork it: `claude --resume <team-session-id> --fork-session`.
 3. **Work normally.** The extension loads the repo's `CLAUDE.md`, so the team's branch naming, worktree and commit rules still apply.
-4. **Open and merge the PR yourself** if you want. Merging to `main` is your call either way; note in the PR description that it was done outside AIPM.
+4. **Open and merge the PR yourself** if you want. Merging to the default branch is your call either way; note in the PR description that it was done outside AIPM.
 5. **Update memory.** Before closing, have the session add a short entry to `memory.md` (what changed, decisions, gotchas) and commit it.
 6. **Clean up or leave it.** Delete the branch and worktree yourself, or leave them: once `reconcile` reports the merge, the team cleans up under its own rules.
 7. **Resume the team.** `/resume montecarlo` runs `reconcile`: fetch, record merged PRs, send `notify_merged`, brief the team session and refresh `STATUS.md`. It then lists any tasks queued while paused, for you to dispatch or discard.
@@ -278,7 +278,7 @@ flowchart LR
 - **API key variables are removed for teams.** If `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN` is set, `claude` bills that API account instead of your plan. The fleet server drops both names from each team's environment without reading their values. `fleet.doctor` checks that `claude auth status` reports `claude.ai` and warns if either variable is set.
 - **API keys only with your double confirmation.** A team never runs on an API key by default. Using one needs you to confirm twice in the PM session: AIPM asks and explains the billing change, then asks again before the first dispatch that would use it.
 - **One plan, shared limits.** The PM and every team draw on the same usage limits. A headless call starts at about 50k tokens, mostly Claude Code's cached setup, before the team does any work.
-- **Someone else's install** runs the same way on their laptop, under their own sign-in and plan. If AIPM is ever offered to clients or other users, revisit API key authentication ([legal and compliance](https://code.claude.com/docs/en/legal-and-compliance), [Agent SDK overview](https://code.claude.com/docs/en/agent-sdk/overview)), with the double confirmation above.
+- **Someone else's install** runs the same way on their laptop, under their own sign-in and plan. Teams stay on the unmodified `claude` CLI. AIPM does not use the Agent SDK library. If AIPM is ever offered to clients or other users, revisit API key authentication ([legal and compliance](https://code.claude.com/docs/en/legal-and-compliance)), with the double confirmation above.
 
 ## Risks and open decisions
 
@@ -291,6 +291,6 @@ flowchart LR
 
 **Open decisions**
 
-- [ ] Does job-search-assistant get its own repo, or stay inside `esscott1/ClaudeCowork`?
+- [x] job-search-assistant is its own repo (`C:\src\job-search-assistant`, `esscott1/job-search-assistant`), not a folder inside `esscott1/ClaudeCowork`.
 - [ ] Visibility for new repos by default: private or public (portfolio).
 - [x] Fleet server host: native Windows (see Components).
