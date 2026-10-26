@@ -1,6 +1,6 @@
 # AIPM Roadmap
 
-Five phases. Each ends with a test that proves it works before the next starts. See [architecture.md](architecture.md) for the design.
+Seven phases. Each ends with a test that proves it works before the next starts. See [architecture.md](architecture.md) for the design.
 
 | Phase | Theme | Done when |
 | --- | --- | --- |
@@ -10,6 +10,8 @@ Five phases. Each ends with a test that proves it works before the next starts. 
 | 3 | Bootstrap | otsconsulting exists on GitHub with a working team |
 | 4 | Visibility | One command, or the control panel, shows status across all repos and approves a PR |
 | 5 | Schedule | The board is current each morning |
+| 6 | Review and evaluation | One architecture review runs both ways, independently, and the two assessments are compared |
+| 7 | Enterprise architecture | The enterprise architect answers one portfolio question in writing, with its cost of change and my decision |
 
 ## Phase 0 — Repo and docs
 
@@ -33,7 +35,9 @@ Goal: one PM session can drive one adopted team end to end.
 - [x] Structured end-of-task report (summary, branch, changed, tests, blockers, next step, tokens used)
 - [ ] `reconcile(project)`: fetch, diff since `last_seen_commit`, detect merged PRs via `gh`, brief the team; runs before every dispatch
 - [ ] `pause` / `resume`; a dispatch to a paused project is refused with a reminder and saved to `fleet/queue.json`; `resume` lists the queued tasks to dispatch or discard
-- [ ] `/adopt-project` skill (find, inspect, pick context docs, register, health check; the team always starts in a fresh session) and `/retire-project`. Adoption changes nothing in the repo
+- [ ] `projects.yaml` gains `framework` (spec-kit | gsd | openspec | none), `context_docs`, `northstar`, and a top-level `portfolio_path`. The model sets `extra="forbid"`, so these are rejected until added; they stay inert until Phases 6–7, but land now so the schema doesn't need migrating later
+- [ ] The dispatch brief names the project's `framework` and tells the team to enter through it; `none` means its `CLAUDE.md` alone
+- [ ] `/adopt-project` skill (find, inspect, pick context docs, name the north star, detect the framework, register, health check; the team always starts in a fresh session) and `/retire-project`. Adoption changes nothing in the repo
 - [ ] Fresh-start orientation: a team's first task in a new session begins by reading the project's `context_docs`
 - [x] `.mcp.json` registers the fleet server with the PM session
 - [ ] Live check of `dispatch`: real `claude -p` runs against a throwaway repo (deferred until later in Phase 1; ask first, about 50k tokens per run)
@@ -70,3 +74,31 @@ Goal: one PM session can drive one adopted team end to end.
 
 - [ ] Nightly scheduled task: `reconcile` all projects, then `standup`
 - [ ] **Exit test:** the board is current each morning without manual action
+
+## Phase 6 — Review and evaluation
+
+Goal: AIPM can assess an adopted project two ways, independently, and compare the answers.
+
+- [ ] `inspect_project(project)`: AIPM reads a repo read-only (tree, context docs, framework artifacts, recent history) without dispatching to its team
+- [ ] `review(project, kind)` dispatched to the team, where kind is `architecture`, `consistency` or `northstar`
+- [ ] AIPM's own assessment of the same kinds, from `inspect_project`, written to `portfolio/assessments/<project>/` with its model and the commit it was made against
+- [ ] **Independence rule enforced:** `get_report` on a review job withholds the team's report until AIPM's own assessment for that review is recorded, and the review runs on a different model than the team's
+- [ ] Comparison output: where the two agree, where they disagree
+- [ ] `northstar_review(project)`: read the project's north star, report drift against recent work, propose an update as a task for the team
+- [ ] `eval_create(project, target)` and `eval_run(project)`, in whatever format the repo already uses; a repo with none gets a format proposed first
+- [ ] Eval runs get their own budget class, separate from the per-job token cap
+- [ ] AIPM's own subagents in `.claude/agents/`: `architecture-reviewer`, `eval-author`
+- [ ] **Exit test:** an architecture review of MonteCarlo runs both ways, the team's report stays withheld until AIPM's assessment is recorded, and the comparison names at least one point of disagreement
+
+## Phase 7 — Enterprise architecture
+
+Goal: AIPM reasons about the portfolio, not just the projects in it.
+
+- [ ] `portfolio/` tree with `northstar.md`, `reviews/`, `assessments/`, `evals/` and `decisions.md`; `portfolio_path` relocates it
+- [ ] `enterprise-architect` subagent in AIPM's own `.claude/agents/`
+- [ ] `ea_review(question)`: a portfolio-level assessment across every adopted repo, written to `portfolio/reviews/`
+- [ ] Every recommendation records what adopting it would cost and what is given up either way
+- [ ] A declined recommendation is recorded in `portfolio/decisions.md` with my reason, so it isn't raised again from scratch
+- [ ] Portfolio north star: set it, and roll each project's north star up against it
+- [ ] An accepted recommendation becomes tasks dispatched to the affected teams, under the usual gates
+- [ ] **Exit test:** the enterprise architect answers one portfolio question (for example where eval sets should live) with a recommendation, its cost of change, and my accept-or-decline recorded
