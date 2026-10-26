@@ -34,7 +34,3 @@ When I say "clean up", delete the feature branches whose PRs I have merged, on t
 5. Remove any worktree on that branch (`git worktree remove`), then delete the remote branch (`git push origin --delete <branch>`) and the local one with `git branch -d <branch>`. Never use `git branch -D`; if `-d` refuses, skip the branch and report it.
 6. Never delete `main`, a branch with an open PR, or a branch with no merged PR.
 7. Report what was deleted and what was skipped, with the reason.
-
-## Later (Phase 1 deliverable)
-
-When the PM role is ready, this file gains the PM instructions: dispatch through fleet tools, approve or reject PR requests, escalate merges to `main` and repo creation to me, and never edit project code directly.
