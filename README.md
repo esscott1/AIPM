@@ -23,6 +23,7 @@ uv run pytest
 
 - [Architecture](docs/architecture.md)
 - [Roadmap](docs/roadmap.md)
+- [Progress and open tasks](docs/progress.md)
 - [Design dashboard](dashboard/aipm-board.html) (open locally in a browser)
 
 ## Managed projects
