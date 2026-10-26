@@ -211,7 +211,7 @@ You can still work on an adopted repo directly, for example in VS Code with the 
 | Done outside AIPM | Impact | How AIPM handles it |
 | --- | --- | --- |
 | Commits and new branches | The team session's context is stale | `reconcile` briefs the team on changes since `last_seen_commit` before its next task |
-| Working on a branch or worktree while a team job is running on it | Conflicting edits or a broken worktree | Pause the project first; a job stops and reports if its checkout changed underneath it |
+| Changing a file while a team job is also changing that file | The team's edits and the outside edits can overwrite each other | Pause the project first. If it happens anyway, the team reports that file to the PM, pauses that work, and waits for direction (Phase 2; not built yet). It does not keep editing the file. The usual direction is to continue after a human has checked the outside change |
 | Opening a PR yourself | It skipped AIPM's PR approval | Standup lists it as opened outside AIPM; no automatic action |
 | Merging a PR yourself | AIPM never sent the merge notice | `reconcile` sees the merge through `gh` and sends `notify_merged`, so the team cleans up unless you already did |
 | Resuming the team's own session ID in VS Code | Two histories diverge and the team loses track | Don't; start a new session or fork the team's |
@@ -228,7 +228,7 @@ You can still work on an adopted repo directly, for example in VS Code with the 
 6. **Clean up or leave it.** Delete the branch and worktree yourself, or leave them: once `reconcile` reports the merge, the team cleans up under its own rules.
 7. **Resume the team.** `/resume montecarlo` runs `reconcile`: fetch, record merged PRs, send `notify_merged`, brief the team session and refresh `STATUS.md`. It then lists any tasks queued while paused, for you to dispatch or discard.
 
-If you forget to pause, `reconcile` still runs before every dispatch, so the team is briefed. The remaining risk is a job running on the same branch at the same moment, and that job stops and reports instead of overwriting your work. Remote Control of a VS Code session counts as working outside AIPM, and the same steps apply.
+If you forget to pause, `reconcile` still runs before every dispatch, so the team is briefed on its next task. A job already running does not yet notice an outside edit. In Phase 2, if a file the team is changing is also changed outside the job, the team reports that file to the PM, pauses, and waits for direction. It does not keep editing the file. The usual direction is to continue after a human has checked the outside change. Remote Control of a VS Code session counts as working outside AIPM, and the same steps apply.
 
 ## Interfaces (Phase 4)
 

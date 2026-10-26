@@ -45,7 +45,7 @@ Goal: one PM session can drive one adopted team end to end.
 
 - [ ] `job_status` and `cancel` for the background jobs `dispatch` starts
 - [ ] `broadcast(instruction, projects)`
-- [ ] Job stops and reports if its branch or worktree changed underneath it
+- [ ] If a file the team is changing is also changed outside the job, the team reports that file to the PM, pauses, and waits for direction. It does not keep editing that file. The usual direction is to continue after a human has checked the outside change
 - [ ] Decide whether the token cap ever stops a job (report-only in Phase 1); tokens reported per job and repo
 - [ ] Adopt job-search-assistant
 - [ ] **Exit test:** one broadcast ("report dependency status") runs in all adopted repos concurrently
