@@ -66,7 +66,7 @@ You talk only to the PM session. The PM calls the fleet server's MCP tools, and 
 
 These files are machine-local and stay out of git, since they hold `C:\src` paths and change without a PR. `projects.example.yaml` documents the registry format. If this machine is lost, the registry is rebuilt by adopting each repo again; the repos themselves are on GitHub.
 
-**Host: Windows.** The fleet server runs natively on Windows, the same environment as `C:\src`, VS Code and the Claude desktop app. That keeps one Claude Code session store (`%USERPROFILE%\.claude`) and one set of paths, so an existing session can be taken over at adoption, forks and `reconcile` work with sessions you run in VS Code, and the Control Panel connects to it directly as a local MCP server. Teams use your Windows `claude` and `gh` sign-ins, and their shell commands run in Git Bash. WSL is fine for one-off git and `gh` commands, but Claude Code sessions for an adopted repo always run on Windows: WSL keeps a separate session store and sees the repos as `/mnt/c/...`, so sessions don't carry across.
+**Host: Windows.** The fleet server runs natively on Windows, the same environment as `C:\src`, VS Code and the Claude desktop app. That keeps one Claude Code session store (`%USERPROFILE%\.claude`) and one set of paths, so forks and `reconcile` work with sessions you run in VS Code, and the Control Panel connects to it directly as a local MCP server. Teams use your Windows `claude` and `gh` sign-ins, and their shell commands run in Git Bash. WSL is fine for one-off git and `gh` commands, but Claude Code sessions for an adopted repo always run on Windows: WSL keeps a separate session store and sees the repos as `/mnt/c/...`, so sessions don't carry across.
 
 ## Managed projects
 
@@ -74,7 +74,7 @@ Two existing repos are adopted at launch; otsconsulting is created by AIPM as it
 
 | Project | Local path | GitHub remote | Onboarding |
 | --- | --- | --- | --- |
-| MonteCarlo | `C:\src\MonteCarlo` | `esscott1/MonteCarlo` | Adopt with `/adopt-project`: take over one existing session or start fresh |
+| MonteCarlo | `C:\src\MonteCarlo` | `esscott1/MonteCarlo` | Adopt with `/adopt-project`; the team starts fresh |
 | job-search-assistant | `C:\src\job-search-assistant` | `esscott1/job-search-assistant` | Adopt: same as above |
 | otsconsulting | `C:\src\otsconsulting` | `esscott1/otsconsulting` (new) | Bootstrap via `create_project` |
 
@@ -134,11 +134,10 @@ A new AIPM knows nothing about existing repos, so each one is adopted explicitly
 1. **Find candidates:** scan `C:\src` for git repos not yet in `projects.yaml`, or take a path you give it.
 2. **Inspect the repo (read-only):** its remote, default branch (`main` or `master`), current branch, open branches and worktrees, and whether `CLAUDE.md` and `memory.md` exist.
 3. **Pick the context docs:** list the Markdown files already in the repo (`CLAUDE.md`, `memory.md`, `README.md`, and plans such as `docs/architecture.md` or a roadmap) and let you choose the ones that are the project's plans and north stars. They are saved as the project's `context_docs` in `projects.yaml`.
-4. **Choose the team's session:** list the Claude Code sessions saved for the repo's folder, newest first, each with when it was last active, its size and its first prompt. Then choose one of:
-   - **Take over a session.** The team continues that conversation and keeps its context. A team runs in exactly one session, so you pick one. From then on it belongs to the team: stop using it in VS Code, or the two histories diverge (see "Working on adopted projects outside AIPM"). A large session is reloaded on every dispatch, which adds to each job's tokens.
-   - **Start fresh.** The team gets a new session with no conversation history: a fresh set of eyes, not biased by earlier sessions. Its first task begins with an orientation: read the context docs, then do the task. The old sessions stay where they are in the session store; the team never resumes them, and AIPM never deletes them.
-5. **Register:** write the `projects.yaml` entry (goal, model, permission mode, token budget, context docs, `status: active`). In `sessions.json`, record the session taken over (none for a fresh start) and the default branch's current commit as `last_seen_commit`.
-6. **Health check:** offer to dispatch "report your current state" (about 50k tokens). It is the team's first task, so a fresh team does its orientation here.
+4. **Register:** write the `projects.yaml` entry (goal, model, permission mode, token budget, context docs, `status: active`). In `sessions.json`, record the default branch's current commit as `last_seen_commit` and no session.
+5. **Health check:** offer to dispatch "report your current state" (about 50k tokens).
+
+**Every team starts fresh.** A new team, adopted or created, begins in a new Claude Code session with no conversation history: a fresh set of eyes, not biased by earlier work. Its first task begins with an orientation: read the context docs, then do the task. AIPM ignores any sessions already saved for the repo's folder; it never lists, resumes or deletes them.
 
 `/retire-project` removes a repo from AIPM (registry entry, session mapping and queued tasks) without touching the repo or its sessions.
 

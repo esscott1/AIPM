@@ -33,7 +33,7 @@ Goal: one PM session can drive one adopted team end to end.
 - [x] Structured end-of-task report (summary, branch, changed, tests, blockers, next step, tokens used)
 - [ ] `reconcile(project)`: fetch, diff since `last_seen_commit`, detect merged PRs via `gh`, brief the team; runs before every dispatch
 - [ ] `pause` / `resume`; a dispatch to a paused project is refused with a reminder and saved to `fleet/queue.json`; `resume` lists the queued tasks to dispatch or discard
-- [ ] `/adopt-project` skill (find, inspect, pick context docs, take over one session or start fresh, register, health check) and `/retire-project`. Adoption changes nothing in the repo
+- [ ] `/adopt-project` skill (find, inspect, pick context docs, register, health check; the team always starts in a fresh session) and `/retire-project`. Adoption changes nothing in the repo
 - [ ] Fresh-start orientation: a team's first task in a new session begins by reading the project's `context_docs`
 - [x] `.mcp.json` registers the fleet server with the PM session
 - [ ] Live check of `dispatch`: real `claude -p` runs against a throwaway repo (deferred until later in Phase 1; ask first, about 50k tokens per run)
