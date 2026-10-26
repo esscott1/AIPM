@@ -43,3 +43,4 @@ Decisions made during design (Oct 2026). Newest at the bottom.
 - The fleet server is Python 3.12+. Teams run through the unmodified `claude` CLI (`claude -p`), not the Claude Agent SDK library. (2026-10-25)
 - The protected branch is the repo's default branch, whatever git names it (`main`, `master`, or another name). Do not assume `main`. On this repo the ruleset is still named "Protect main" because that is this repo's default branch. (2026-10-25)
 - job-search-assistant is its own repo at `C:\src\job-search-assistant` (`esscott1/job-search-assistant`). It is not inside `esscott1/ClaudeCowork`. (2026-10-25)
+- If a file a running team is changing is also changed outside that job, the team reports that file to the PM, pauses, and waits for direction. It does not keep editing the file, and it does not stop the whole job on its own. The usual direction is to continue after a human has checked the outside change. This is Phase 2; it is not built yet. (2026-10-25)
