@@ -32,8 +32,9 @@ Goal: one PM session can drive one adopted team end to end.
 - [ ] `sessions.json` persistence (`session_id`, `last_seen_commit`); resume always from the registered path (`session_id` done; `last_seen_commit` comes with `reconcile`)
 - [x] Structured end-of-task report (summary, branch, changed, tests, blockers, next step, tokens used)
 - [ ] `reconcile(project)`: fetch, diff since `last_seen_commit`, detect merged PRs via `gh`, brief the team; runs before every dispatch
-- [ ] `pause` / `resume`; dispatches to a paused project wait
-- [ ] `/adopt-project` skill (find, inspect, team rules, import session, seed subagents, register, health check) and `/retire-project`
+- [ ] `pause` / `resume`; a dispatch to a paused project is refused with a reminder and saved to `fleet/queue.json`; `resume` lists the queued tasks to dispatch or discard
+- [ ] `/adopt-project` skill (find, inspect, pick context docs, register, health check; the team always starts in a fresh session) and `/retire-project`. Adoption changes nothing in the repo
+- [ ] Fresh-start orientation: a team's first task in a new session begins by reading the project's `context_docs`
 - [x] `.mcp.json` registers the fleet server with the PM session
 - [ ] Live check of `dispatch`: real `claude -p` runs against a throwaway repo (deferred until later in Phase 1; ask first, about 50k tokens per run)
 - [ ] **Exit test:** adopt MonteCarlo, dispatch "report your current state", receive the report in the PM session
@@ -52,7 +53,7 @@ Goal: one PM session can drive one adopted team end to end.
 - [ ] `templates/CLAUDE.md.tmpl`, `templates/memory.md.tmpl`, `templates/agents/` (spike, planner, researcher)
 - [ ] `create_project` with an approval stop before `gh repo create`
 - [ ] `create_project` applies the "Protect main" ruleset (PR required, no force push, no deletion, no bypass) to every new repo
-- [ ] `/adopt-project` offers to apply the same ruleset to adopted repos that lack it
+- [ ] Apply the same ruleset to an adopted repo that lacks it, only when I ask (adoption itself never changes a repo)
 - [ ] `request_pr` / `approve_pr` / `reject_pr`; teams cannot open a PR without approval
 - [ ] `notify_merged` triggers team cleanup (delete merged branch and worktree) per the team's CLAUDE.md
 - [ ] **Exit test:** create otsconsulting, staff its team, run its kickoff task, open and merge its first PR, team cleans up

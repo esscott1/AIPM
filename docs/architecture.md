@@ -1,6 +1,6 @@
 # AIPM — AI Program Manager Architecture
 
-As of 2026-10-24 · Eric Scott
+As of 2026-10-25 · Eric Scott
 
 ## Summary
 
@@ -62,10 +62,11 @@ You talk only to the PM session. The PM calls the fleet server's MCP tools, and 
 
 - `projects.yaml` is the registry. `/adopt-project` and `create_project` add entries, `pause` and `resume` set `status`, and `/retire-project` removes entries. You can edit a budget or model by hand, but never need to.
 - `fleet/sessions.json` holds what changes on every run: each project's `session_id` and `last_seen_commit`.
+- `fleet/queue.json` holds tasks dispatched while a project was paused, until you dispatch or discard them.
 
-Both files are machine-local and stay out of git, since they hold `C:\src` paths and change without a PR. `projects.example.yaml` documents the registry format. If this machine is lost, the registry is rebuilt by adopting each repo again; the repos themselves are on GitHub.
+These files are machine-local and stay out of git, since they hold `C:\src` paths and change without a PR. `projects.example.yaml` documents the registry format. If this machine is lost, the registry is rebuilt by adopting each repo again; the repos themselves are on GitHub.
 
-**Host: Windows.** The fleet server runs natively on Windows, the same environment as `C:\src`, VS Code and the Claude desktop app. That keeps one Claude Code session store (`%USERPROFILE%\.claude`) and one set of paths, so existing sessions can be imported, forks and `reconcile` work with sessions you run in VS Code, and the Control Panel connects to it directly as a local MCP server. Teams use your Windows `claude` and `gh` sign-ins, and their shell commands run in Git Bash. WSL is fine for one-off git and `gh` commands, but Claude Code sessions for an adopted repo always run on Windows: WSL keeps a separate session store and sees the repos as `/mnt/c/...`, so sessions don't carry across.
+**Host: Windows.** The fleet server runs natively on Windows, the same environment as `C:\src`, VS Code and the Claude desktop app. That keeps one Claude Code session store (`%USERPROFILE%\.claude`) and one set of paths, so forks and `reconcile` work with sessions you run in VS Code, and the Control Panel connects to it directly as a local MCP server. Teams use your Windows `claude` and `gh` sign-ins, and their shell commands run in Git Bash. WSL is fine for one-off git and `gh` commands, but Claude Code sessions for an adopted repo always run on Windows: WSL keeps a separate session store and sees the repos as `/mnt/c/...`, so sessions don't carry across.
 
 ## Managed projects
 
@@ -73,7 +74,7 @@ Two existing repos are adopted at launch; otsconsulting is created by AIPM as it
 
 | Project | Local path | GitHub remote | Onboarding |
 | --- | --- | --- | --- |
-| MonteCarlo | `C:\src\MonteCarlo` | `esscott1/MonteCarlo` | Adopt with `/adopt-project`, optionally import an existing session |
+| MonteCarlo | `C:\src\MonteCarlo` | `esscott1/MonteCarlo` | Adopt with `/adopt-project`; the team starts fresh |
 | job-search-assistant | `C:\src\job-search-assistant` | `esscott1/job-search-assistant` | Adopt: same as above |
 | otsconsulting | `C:\src\otsconsulting` | `esscott1/otsconsulting` (new) | Bootstrap via `create_project` |
 
@@ -103,10 +104,10 @@ The matching `fleet/sessions.json` entry, written by the fleet server and `recon
 
 `dispatch` starts a team task in the background and returns a job right away, because a task can take minutes and the PM session shouldn't wait on it. The PM polls `get_report` until the job ends.
 
-1. **Checks:** the project exists, isn't paused, its folder exists, and it has no other job running. A project runs one job at a time, because two runs resuming one session would fork its history.
+1. **Checks:** the project exists, isn't paused, its folder exists, and it has no other job running. A project runs one job at a time, because two runs resuming one session would fork its history. A dispatch to a paused project starts nothing: it reminds you the project is paused and not taking new work, and saves the task to the project's queue (see Pause and resume).
 2. **Mode:** the project's `permission_mode` is the ceiling. A dispatch may ask for `plan` on an `acceptEdits` project, never the reverse.
 3. **Run:** the fleet server runs `claude -p <task> --output-format json --permission-mode <mode> --model <model> --json-schema <report>` in the repo folder, adding `--resume <session_id>` once the team has a session and `--max-turns` only if the project sets one.
-4. **Brief:** each task carries a short AIPM brief: follow the repo's CLAUDE.md and memory.md, work on a feature branch, don't open a pull request, finish with the report. It goes in the prompt rather than `--append-system-prompt`, which is recorded once per session and would never reach existing teams if it changed.
+4. **Brief:** each task carries a short AIPM brief: follow the repo's CLAUDE.md and memory.md, work on a feature branch, don't open a pull request, finish with the report. It goes in the prompt rather than `--append-system-prompt`, which is recorded once per session and would never reach existing teams if it changed. A team with no session yet (a fresh start) also gets an orientation ahead of its first task: read the project's `context_docs` first.
 5. **Result:** the job record in `fleet/jobs/<id>.json` ends as `succeeded` with the report, or `failed` with the reason. The returned `session_id` is saved to `sessions.json`.
 
 | Outcome | What happens |
@@ -117,19 +118,28 @@ The matching `fleet/sessions.json` entry, written by the fleet server and `recon
 | Saved session can't be resumed | `failed`; the fleet server never starts a fresh session in its place, which would drop the team's context |
 | Fleet server stops mid-job | `lost` once the job's file stops being refreshed (every 30 s); the `claude` process may still finish on its own |
 
+### Pause and resume
+
+`pause(project)` stops a project from taking new work, for example while you work in the repo yourself. A job already running is left to finish.
+
+- **Dispatch while paused:** nothing runs. The PM tells you the project is paused and not accepting new work, and the task is saved to the project's queue in `fleet/queue.json`.
+- **Resume:** `resume(project)` sets the project active, runs `reconcile`, and lists the queued tasks. You choose which to dispatch, in what order, or discard. A queued task never runs on its own, because it may be out of date by then.
+
 ## Adopting existing projects
 
 A new AIPM knows nothing about existing repos, so each one is adopted explicitly with the `/adopt-project` skill. It is built in Phase 1, because Phase 1's exit test needs MonteCarlo adopted.
 
-1. **Find candidates:** scan `C:\src` for git repos not yet in `projects.yaml`, or take a path you give it.
-2. **Inspect the repo:** read its remote, default branch, open branches and worktrees.
-3. **Check team rules:** if `CLAUDE.md` or `memory.md` is missing, offer to create it. If one exists, offer to add a short AIPM section covering PR requests, cleanup after a merge and the end-of-task report. Existing content is never overwritten. If `main` has no "Protect main" ruleset, offer to apply it.
-4. **Pick up history:** list the existing Claude Code sessions for that folder and let you import one as the team's session, so the team keeps its context, or start fresh.
-5. **Seed subagents:** add spike, planner and researcher only where they are missing.
-6. **Register:** write the `projects.yaml` entry with goal, token budget and `status: active`, and record the current commit as `last_seen_commit` in `sessions.json`.
-7. **Health check:** dispatch "report your current state", so the team's first line appears in `STATUS.md`.
+**Adopting registers a repo; it never changes it.** Adoption writes only AIPM's own state (`projects.yaml` and `sessions.json`). It adds no files, branches or commits to the repo and changes none of its GitHub settings. Every change to an adopted repo comes from a task dispatched to its team. If you want the repo to gain a `memory.md`, the spike, planner and researcher subagents, or the "Protect main" ruleset, dispatch that as a task or apply the ruleset yourself. The team doesn't need an AIPM section in its `CLAUDE.md`, because every dispatch carries AIPM's rules in its brief.
 
-`/retire-project` removes a repo from AIPM (registry entry and session mapping) without touching the repo itself.
+1. **Find candidates:** scan `C:\src` for git repos not yet in `projects.yaml`, or take a path you give it.
+2. **Inspect the repo (read-only):** its remote, default branch (`main` or `master`), current branch, open branches and worktrees, and whether `CLAUDE.md` and `memory.md` exist.
+3. **Pick the context docs:** list the Markdown files already in the repo (`CLAUDE.md`, `memory.md`, `README.md`, and plans such as `docs/architecture.md` or a roadmap) and let you choose the ones that are the project's plans and north stars. They are saved as the project's `context_docs` in `projects.yaml`.
+4. **Register:** write the `projects.yaml` entry (goal, model, permission mode, token budget, context docs, `status: active`). In `sessions.json`, record the default branch's current commit as `last_seen_commit` and no session.
+5. **Health check:** offer to dispatch "report your current state" (about 50k tokens).
+
+**Every team starts fresh.** A new team, adopted or created, begins in a new Claude Code session with no conversation history: a fresh set of eyes, not biased by earlier work. Its first task begins with an orientation: read the context docs, then do the task. AIPM ignores any sessions already saved for the repo's folder; it never lists, resumes or deletes them.
+
+`/retire-project` removes a repo from AIPM (registry entry, session mapping and queued tasks) without touching the repo or its sessions.
 
 ## New-project bootstrap
 
@@ -155,7 +165,7 @@ Each project team is a lead session that owns its repo and delegates scoped work
 | planner | Break a goal into steps before coding | Read-only | `docs/plans/<topic>.md` |
 | researcher | Libraries, APIs, prior art, competitor sites | Read-only + web search | `docs/research/<topic>.md` |
 
-- AIPM seeds these three from `templates/agents/`; each repo can customize or add its own.
+- AIPM seeds these three from `templates/agents/` into repos it creates. An adopted repo gets them only through a task dispatched to its team. Each repo can customize or add its own.
 - Subagents are scoped to their repo: they inherit the team's `cwd` and permissions, never another repo's.
 - Every team task ends with a structured report (changed, tests, blockers, next step, tokens used) that the fleet server returns to the PM.
 
@@ -182,8 +192,8 @@ Teams own their branches and worktrees, AIPM approves pull requests, and you app
 - Each team's `CLAUDE.md` and `memory.md` set its commit, branching, worktree and cleanup rules; AIPM does not override them.
 - A team asks for a PR with `request_pr`; the PM checks the team's report against the task and approves or sends it back with a reason.
 - AIPM is the source of truth for merges: a team cleans up only branches AIPM has reported as merged, so unmerged work is never deleted by a team.
-- Cleanup deletes local branches with `git branch -d` only, never `-D`. A branch `-d` refuses (squash- or rebase-merged, or with commits after the merge) is skipped and reported for me to delete. Team templates and the AIPM section `/adopt-project` adds carry the same rule.
-- **"Protect main" ruleset on GitHub** (GitHub Pro, so it applies to private repos): pull request required (0 approvals, since I can't approve my own PRs), no force pushes, no deleting `main`, and no bypass actors. Teams act through my GitHub sign-in, so allowing myself to bypass would let them bypass too. AIPM applies it to every repo it creates; adopted repos get it during `/adopt-project`.
+- Cleanup deletes local branches with `git branch -d` only, never `-D`. A branch `-d` refuses (squash- or rebase-merged, or with commits after the merge) is skipped and reported for me to delete. Team templates carry the same rule.
+- **"Protect main" ruleset on GitHub** (GitHub Pro, so it applies to private repos): pull request required (0 approvals, since I can't approve my own PRs), no force pushes, no deleting `main`, and no bypass actors. Teams act through my GitHub sign-in, so allowing myself to bypass would let them bypass too. AIPM applies it to every repo it creates. Adoption never changes a repo's settings, so an adopted repo gets it only when you ask for it separately.
 - Teams start in `plan` or `acceptEdits` mode; `bypassPermissions` is never used.
 - Each job has a token cap from `projects.yaml` (default 100,000). For now it is report-only: a job that goes over is flagged, never stopped, so a team never fails mid-task on an AIPM limit. The Max plan's usage limit is the hard stop. `max_turns` is optional and unset by default.
 
@@ -210,13 +220,13 @@ You can still work on an adopted repo directly, for example in VS Code with the 
 
 **Instructions: a feature from start to merge, outside AIPM**
 
-1. **Pause the team.** In AIPM, `/pause montecarlo`, or Pause on the control panel. Let a running job finish or cancel it; new dispatches wait.
+1. **Pause the team.** In AIPM, `/pause montecarlo`, or Pause on the control panel. Let a running job finish or cancel it; new dispatches are refused with a reminder and saved to the queue.
 2. **Start a new session** in VS Code in `C:\src\MonteCarlo`. Don't resume the team's session. If you want its context, fork it: `claude --resume <team-session-id> --fork-session`.
 3. **Work normally.** The extension loads the repo's `CLAUDE.md`, so the team's branch naming, worktree and commit rules still apply.
 4. **Open and merge the PR yourself** if you want. Merging to `main` is your call either way; note in the PR description that it was done outside AIPM.
 5. **Update memory.** Before closing, have the session add a short entry to `memory.md` (what changed, decisions, gotchas) and commit it.
 6. **Clean up or leave it.** Delete the branch and worktree yourself, or leave them: once `reconcile` reports the merge, the team cleans up under its own rules.
-7. **Resume the team.** `/resume montecarlo` runs `reconcile`: fetch, record merged PRs, send `notify_merged`, brief the team session and refresh `STATUS.md`.
+7. **Resume the team.** `/resume montecarlo` runs `reconcile`: fetch, record merged PRs, send `notify_merged`, brief the team session and refresh `STATUS.md`. It then lists any tasks queued while paused, for you to dispatch or discard.
 
 If you forget to pause, `reconcile` still runs before every dispatch, so the team is briefed. The remaining risk is a job running on the same branch at the same moment, and that job stops and reports instead of overwriting your work. Remote Control of a VS Code session counts as working outside AIPM, and the same steps apply.
 
