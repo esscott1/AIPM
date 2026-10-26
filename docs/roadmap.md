@@ -53,7 +53,7 @@ Goal: one PM session can drive one adopted team end to end.
 ## Phase 3 — Bootstrap and PR flow
 
 - [ ] `templates/CLAUDE.md.tmpl`, `templates/memory.md.tmpl`, `templates/agents/` (spike, planner, researcher)
-- [ ] `create_project` with an approval stop before `gh repo create`
+- [ ] `create_project` with an approval stop before `gh repo create`; registration writes `last_seen_commit` the same way adoption does (the default branch's current commit, no session)
 - [ ] `create_project` protects the new repo's default branch, whatever it is named (`main`, `master`, or another name): PR required, no force push, no deletion, no bypass
 - [ ] Apply that same protection to an adopted repo that lacks it, only when I ask (adoption itself never changes a repo)
 - [ ] `request_pr` / `approve_pr` / `reject_pr`; teams cannot open a PR without approval
