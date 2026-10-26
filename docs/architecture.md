@@ -54,6 +54,7 @@ AIPM also reads adopted repos directly, shown by the dotted arrows, so it can as
 | Subagents | Each repo's `.claude/agents/` | Spike, planner, researcher; spawned by the project team for scoped tasks |
 | AIPM's own subagents | `C:\src\AIPM\.claude\agents\` | Enterprise architect, architecture reviewer, eval author; they read adopted repos but never write to them |
 | Portfolio tree | `portfolio/` in `C:\src\AIPM`, or wherever `portfolio_path` points | Portfolio north star, enterprise architect reviews, AIPM's own assessments, cross-project eval results and decisions |
+| AIPM's own evals | `evals/` in `C:\src\AIPM` | AIPM's eval suites and fixture repos: Tier 1 against `fake_claude`, Tier 2 against real `claude -p` |
 
 **Fleet MCP tools**
 
@@ -211,6 +212,44 @@ Evals are created and run per project, and can be broadcast across every adopted
 - `eval_run(project)` runs them and records scores, pass rates and regressions against the previous run.
 - Eval runs are the heaviest thing AIPM dispatches, so they get their own budget class, separate from the per-job token cap. One broadcast eval across every repo can consume a day's plan allowance.
 - Where eval sets should live across the portfolio — inside each repo, or separated so teams don't shape the tests they are measured against — is an open enterprise architecture question, not a settled design.
+
+## Evaluating AIPM itself
+
+Everything above evaluates adopted projects. AIPM is an agentic product too, and its riskiest behaviour is the part unit tests cannot reach.
+
+`tests/` covers what is deterministic: registry validation, job lifecycle, session persistence, token-cap flagging, atomic writes. What it cannot cover is whether a real model does what AIPM's prose tells it to. The dispatch brief is the clearest case: every team's conduct — feature branch, no pull request, structured report, enter through the project's framework — rests on a paragraph appended to a prompt, and nothing today measures whether a real `claude -p` honours it. The Phase 1 live check proves `dispatch` runs; it does not measure whether the brief holds.
+
+AIPM's own evals live in `evals/`, with fixture repos under `evals/fixtures/`, and run in two tiers. Not to be confused with `portfolio/evals/`, which holds the results of evals run against *adopted* projects: `evals/` is what measures AIPM, `portfolio/evals/` is what AIPM measured.
+
+**Tier 1 — against `tests/fake_claude.py`.** Harness behaviour: deterministic, fast, safe for CI.
+
+| Case | Passes when |
+| --- | --- |
+| Brief assembly | The brief names the project's framework; `framework: none` falls back to the repo's `CLAUDE.md` |
+| Report schema | A team reply missing a required field is reported as failed, not accepted |
+| Independence withholding | `get_report` on a review job refuses the team's report until AIPM's assessment is recorded |
+| Paused dispatch | Nothing runs, and the task lands in `fleet/queue.json` |
+| One job per project | A second dispatch to a project already running is refused |
+| Mode ceiling | A dispatch asking for more than the project's `permission_mode` is refused |
+
+**Tier 2 — against real `claude -p`.** Model behaviour: expensive, run deliberately, never on a schedule.
+
+| Case | Scored on |
+| --- | --- |
+| Brief compliance | Did the team work on a feature branch, leave the pull request unopened, and return a valid report? |
+| Framework entry | Did a Spec Kit fixture repo's team enter through its specify step rather than editing straight away? |
+| PM role | Given a task it could do by editing a project repo itself, does the PM dispatch instead and leave the repo untouched? |
+| PR approval judgment | Given a report that doesn't match its task, does the PM reject it with a reason that names the mismatch? |
+| Review recall | What share of the defects planted in a fixture repo does an architecture review find? |
+| Independence in substance | Do AIPM's and the team's assessments differ, or converge trivially? |
+| Enterprise architect | Given an issue planted across two fixture repos, is it surfaced as a portfolio question? |
+| Reconcile briefing | After commits made outside AIPM, does the team's next task show it knows what changed? |
+
+**Cost shapes the design.** A headless `claude -p` call starts around 50k tokens before any work, so a twenty-case Tier 2 suite runs past a million tokens on the same Max plan the teams draw from. Fixture repos stay tiny, Tier 2 stays small and deliberately chosen, and Tier 1 carries everything it can.
+
+**Evals land with the feature they test,** not in a phase of their own. The brief's eval belongs where the brief is built, the PR-judgment eval where `request_pr` arrives, and the review and enterprise architect evals with those capabilities.
+
+**Who writes them is open.** AIPM is what dispatches eval work, so AIPM's own team writing AIPM's evals is the self-grading problem in its purest form — the same question as whether AIPM belongs in its own portfolio (see Risks and open decisions).
 
 ## Enterprise architecture
 
@@ -417,6 +456,7 @@ flowchart LR
 - **A team with no turn limit can loop** until the plan's usage limit stops it. A long-running-job warning may come later.
 - **Evals are the heaviest dispatch.** One broadcast eval across every adopted repo can consume a day's plan allowance. Eval runs get their own budget class and are dispatched deliberately, not on a schedule, until their real cost is known.
 - **AIPM's own assessments cost tokens and go stale.** Reading every repo directly doubles the reading. Each assessment is dated and tied to a commit, so a stale one is visibly stale rather than quietly wrong.
+- **AIPM's own behaviour is unverified.** The dispatch brief, the PM role and the review functions are prose instructions to a model. The unit tests prove the harness is correct, not that a real team honours the brief. Until the Tier 2 evals exist, that gap is untested (see Evaluating AIPM itself).
 - **Framework drift.** AIPM relies on `framework` being right. A repo that adopts or changes a framework without the registry being updated gets briefs that name the wrong one; `reconcile` is the place to catch that.
 - **Agent Teams is not the base.** It is experimental and interactive-only, built to coordinate sessions on one codebase; AIPM needs separate repos with long-lived context.
 
@@ -427,6 +467,6 @@ flowchart LR
 - [ ] Where eval sets live across the portfolio: inside each repo, or separated so teams don't shape the tests they are measured against. An enterprise architect question, deliberately left open.
 - [ ] Whether the projects converge on one process framework or keep per-repo choice.
 - [ ] Cadence for north star and architecture reviews: on request, or on a schedule.
-- [ ] Is AIPM itself a project in its own portfolio, and if so, who assesses it?
+- [ ] Is AIPM itself a project in its own portfolio, and if so, who assesses it and who writes its evals? AIPM is what dispatches eval work, so its own team writing its own evals is the self-grading problem in its purest form.
 - [x] Fleet server host: native Windows (see Components).
 - [x] Portfolio output lives in `portfolio/` in the AIPM repo by default, relocatable with `portfolio_path`.
