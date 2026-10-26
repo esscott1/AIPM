@@ -5,7 +5,7 @@ Decisions made during design (Oct 2026). Newest at the bottom.
 - Hub-and-spoke: one PM session, a fleet MCP server, one persistent project team per repo. Agent Teams is not the base (single codebase, experimental).
 - Worker agents are called **project teams**. Each can spawn subagents (spike, planner, researcher) scoped to its own repo.
 - Teams own commits to feature branches and worktree management (create, merge, rebase), per their own CLAUDE.md and memory.md.
-- Opening a pull request requires AIPM's approval. Merging to `main` requires mine.
+- Opening a pull request requires AIPM's approval. Merging to the default branch requires mine. That branch is whatever git reports (`main`, `master`, or another name). Do not assume the name.
 - Cleanup (delete merged feature branches and their worktrees) is the team's job, on a "clean up" command or per its CLAUDE.md after AIPM reports the merge. AIPM is the source of truth for merges; teams never delete unmerged work.
 - Budgets are in tokens, not dollars.
 - Personal use on my Max plan: teams run through the unmodified `claude` CLI headless; no API key. Switch to API keys if AIPM is ever offered to others. Any API-key use needs my confirmation twice in the PM session (see the 2026-10-24 entries).
@@ -13,7 +13,7 @@ Decisions made during design (Oct 2026). Newest at the bottom.
 - Existing repos are adopted with `/adopt-project` (Phase 1). `reconcile` runs before every dispatch so work done outside AIPM (VS Code, Remote Control, merges I do myself) is picked up.
 - Repo lives at `C:\src\AIPM`. The initial commit and push were done from WSL Ubuntu at `/mnt/c/src/AIPM`.
 - The fleet server runs natively on Windows, the same environment as `C:\src`, VS Code and the Claude desktop app. One session store and one set of paths; teams use the Windows `claude` and `gh` sign-ins and Git Bash. Claude Code sessions for adopted repos never run in WSL, which has its own session store and `/mnt/c` paths.
-- `main` is protected on GitHub by the "Protect main" ruleset (GitHub Pro): PR required with 0 approvals, no force push, no deletion, no bypass. All changes, docs included, go through a feature branch and PR. New and adopted repos get the same ruleset.
+- `esscott1/AIPM`'s default branch (`main`) is protected on GitHub by the "Protect main" ruleset (GitHub Pro): PR required with 0 approvals, no force push, no deletion, no bypass. All changes, docs included, go through a feature branch and PR. New repos get the same protection on their default branch, whatever it is named. Adoption never applies it; an adopted repo gets it only when I ask.
 - In this repo, "clean up" deletes the remote and local branches of merged PRs (procedure in `CLAUDE.md`). GitHub's auto-delete-on-merge stays off so "clean up" is the only trigger.
 - Cleanup uses `git branch -d` only, never `-D`, matching my global rules. `-d` refuses squash- and rebase-merged branches, so those are skipped and reported, and I delete them myself. All three GitHub merge methods stay enabled; don't restrict them.
 - When I report a merge, Claude confirms it through `gh`, syncs `main` with `origin/main`, then asks before cleaning up (procedure in `CLAUDE.md`).
@@ -39,3 +39,7 @@ Decisions made during design (Oct 2026). Newest at the bottom.
 - Adopting a repo only registers it: `/adopt-project` writes `projects.yaml` and `sessions.json` and changes nothing in the repo (no files, branches, commits or GitHub settings). Every change to an adopted repo comes from a task dispatched to its team, including adding `memory.md`, subagents or the "Protect main" ruleset. No AIPM section in team CLAUDE.md files; the dispatch brief carries AIPM's rules. (2026-10-25)
 - Every new team, adopted or created, starts in a fresh session: a fresh set of eyes, not biased by earlier sessions. Its first task begins by reading the `context_docs` I picked at adoption (CLAUDE.md, memory.md, architecture, roadmap and other plans). AIPM ignores existing sessions in the repo's folder: it never lists, resumes or deletes them. Considered and dropped: importing or taking over an existing session at adoption. (2026-10-25)
 - A dispatch to a paused project runs nothing: AIPM reminds me the project is paused and saves the task to `fleet/queue.json`. `resume` lists queued tasks for me to dispatch or discard; they never run on their own. (2026-10-25)
+- `last_seen_commit` is written at adoption (and when `create_project` registers a new repo): the default branch's current commit, with no session. `reconcile` diffs since that commit; it does not create the field. (2026-10-25)
+- The fleet server is Python 3.12+. Teams run through the unmodified `claude` CLI (`claude -p`), not the Claude Agent SDK library. (2026-10-25)
+- The protected branch is the repo's default branch, whatever git names it (`main`, `master`, or another name). Do not assume `main`. On this repo the ruleset is still named "Protect main" because that is this repo's default branch. (2026-10-25)
+- job-search-assistant is its own repo at `C:\src\job-search-assistant` (`esscott1/job-search-assistant`). It is not inside `esscott1/ClaudeCowork`. (2026-10-25)

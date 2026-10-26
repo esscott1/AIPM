@@ -40,7 +40,7 @@ The rest of Phase 1 is built with [Spec Kit](https://github.com/github/spec-kit)
 1. `/speckit-specify`: what and why, no technology. It must name the roadmap item and the architecture sections it implements.
 2. `/speckit-clarify`: the owner answers questions about gaps.
 3. `/speckit-plan`: how, including contracts for MCP tool inputs and outputs and for file formats. Fixed constraints, every time:
-   - Python 3.13 on Windows;
+   - Python 3.12+ on Windows;
    - teams run as `claude -p` subprocesses;
    - no Agent SDK library;
    - no API key;
@@ -65,9 +65,9 @@ Do them in order. Each needs the one before it merged.
 | # | Task | Branch | Status | Needs the owner |
 | --- | --- | --- | --- | --- |
 | A | Adopt Spec Kit (no code changes) | `feat/adopt-spec-kit` | In progress: init done, constitution next | Yes, at every Spec Kit step, and to merge |
-| 1 | `reconcile`, and `last_seen_commit` in `sessions.json` | `feat/reconcile` | Not started | Spec Kit steps, merge |
+| 1 | `reconcile` (diffs since the `last_seen_commit` adoption wrote) | `feat/reconcile` | Not started | Spec Kit steps, merge |
 | 2 | `pause` / `resume` and the queue | `feat/pause-resume` | Not started | Spec Kit steps, merge |
-| 3 | `/adopt-project`, `/retire-project`, `context_docs`, fresh-start orientation | `feat/adopt-project` | Not started | Spec Kit steps, merge |
+| 3 | `/adopt-project`, `/retire-project`, `context_docs`, fresh-start orientation, `last_seen_commit` written at adoption | `feat/adopt-project` | Not started | Spec Kit steps, merge |
 | 4 | PM role in `CLAUDE.md` (doc-only, no Spec Kit) | `docs/pm-role` | Not started | Merge |
 | 5 | Live check of `dispatch`: real `claude -p` runs against a throwaway repo, about 50k tokens per run | none | Not started | **Must approve before any run** |
 | 6 | Phase 1 exit test: adopt MonteCarlo, dispatch "report your current state", receive the report | none | Not started | Yes |
@@ -94,20 +94,20 @@ Do them in order. Each needs the one before it merged.
 
 **The text for step 3:**
 ```
-/speckit-constitution Write AIPM's constitution only from rules that already hold. First read CLAUDE.md, all of docs/architecture.md and all of docs/roadmap.md. Principles: (1) Architecture and roadmap first: every spec and plan reads docs/architecture.md and docs/roadmap.md, names the architecture sections and the roadmap item it implements, and builds only what the roadmap's current phase holds. (2) Plans stay true: a feature that changes the design updates docs/architecture.md in the same PR, a feature that finishes a roadmap item ticks it in docs/roadmap.md, and a conflict with either doc is a mismatch to fix before coding. (3) Every change reaches main only through a pull request from a feature branch; the user merges. (4) The fleet server never reads, stores or forwards Claude or GitHub credentials; bypassPermissions is never used; secrets and runtime state (projects.yaml, fleet/sessions.json, fleet/jobs/, fleet/queue.json, .env) stay out of git. (5) Teams run through the unmodified claude CLI on Windows on the user's claude.ai sign-in; no Agent SDK library; no API key unless the user confirms twice. (6) Adopting a repo registers it and never changes it. Precedence: if this constitution disagrees with CLAUDE.md, docs/architecture.md or docs/roadmap.md, those win and the constitution is corrected. Add no principle that isn't already true.
+/speckit-constitution Write AIPM's constitution only from rules that already hold. First read CLAUDE.md, all of docs/architecture.md and all of docs/roadmap.md. Principles: (1) Architecture and roadmap first: every spec and plan reads docs/architecture.md and docs/roadmap.md, names the architecture sections and the roadmap item it implements, and builds only what the roadmap's current phase holds. (2) Plans stay true: a feature that changes the design updates docs/architecture.md in the same PR, a feature that finishes a roadmap item ticks it in docs/roadmap.md, and a conflict with either doc is a mismatch to fix before coding. (3) Every change reaches main only through a pull request from a feature branch; the user merges. (4) The fleet server never reads, stores or forwards Claude or GitHub credentials; bypassPermissions is never used; secrets and runtime state (projects.yaml, fleet/sessions.json, fleet/jobs/, fleet/queue.json, .env) stay out of git. (5) Teams run through the unmodified claude CLI on Windows on the user's claude.ai sign-in; the fleet server is Python 3.12+; no Agent SDK library; no API key unless the user confirms twice. (6) Adopting a repo registers it and never changes it. Adoption writes last_seen_commit as the default branch's current commit. The default branch is whatever git reports (main, master, or another name); do not assume the name. job-search-assistant is its own repo, not inside ClaudeCowork. Precedence: if this constitution disagrees with CLAUDE.md, docs/architecture.md or docs/roadmap.md, those win and the constitution is corrected. Add no principle that isn't already true.
 ```
 
 ### Notes for tasks 1–3
 
 - **Task 1, `reconcile`:**
-  - Read each repo's default branch from git rather than assuming `main`; MonteCarlo uses `master`.
+  - Read each repo's default branch from git. Do not assume the name. MonteCarlo's is `master`; another repo's may be `main` or something else.
   - Change the team brief in `fleet/runner.py` from "never on main" to "never on the default branch".
   - Put the reconcile brief in the dispatch prompt, so it costs no extra run.
-  - Advance `last_seen_commit` only once the team has received the brief.
+  - Diff since `last_seen_commit` when it is set. Reconcile does not create that field. Adoption (task 3) writes it. Until then, a missing value means there is nothing to brief; tests may set the field directly.
 - **Task 2, `pause` / `resume`:**
   - A refused dispatch is saved to `fleet/queue.json`, which needs adding to `.gitignore`.
   - `resume` lists the queue. The owner picks which tasks to dispatch or discard, and queued tasks never run on their own.
-- **Task 3, adoption:** it never writes to the adopted repo, so MonteCarlo's `openspec/` folder and OpenSpec skills are left alone automatically. The spec should still name that as a requirement.
+- **Task 3, adoption:** it never writes to the adopted repo, so MonteCarlo's `openspec/` folder and OpenSpec skills are left alone automatically. The spec should still name that as a requirement. Adoption writes `last_seen_commit` in `sessions.json` as the default branch's current commit, and no session. `create_project` does the same when it registers a new repo.
 - **After task 1:** decide with the owner whether each `specs/<feature>/` folder is a frozen record or a living contract. Record the answer in `CLAUDE.md`.
 - **Code to reuse:**
   - `read_git_state` and `_git` in `fleet/server.py`;
