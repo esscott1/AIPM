@@ -28,6 +28,11 @@ Goal: one PM session can drive one adopted team end to end.
 - [x] Decide where the fleet server runs: native Windows
 - [x] Windows prerequisites: Python 3.12+, Git for Windows (Git Bash), `claude` and `gh` signed in on Windows (`uv run python -m fleet.doctor`)
 - [ ] `CLAUDE.md` gains the PM role, approval gates and "never edit project code" rule
+- [ ] `evals/` with the two tiers documented in `evals/README.md`, and fixture repos under `evals/fixtures/`. Evals land with the feature they test, never in a phase of their own (see [architecture.md](architecture.md), Evaluating AIPM itself)
+- [ ] Tier 1 evals against `fake_claude`: brief assembly per framework, report-schema enforcement, paused dispatch queues, one job per project, mode ceiling
+- [ ] Tier 2 eval — brief compliance: a real team works on a feature branch, opens no PR, returns a valid report. Runs with the live check below; ask first
+- [ ] Tier 2 eval — PM role: given a task it could do by editing a project repo itself, the PM dispatches instead and leaves the repo untouched
+- [ ] Tier 2 eval — reconcile briefing: after commits made outside AIPM, the team's next task shows it knows what changed
 - [x] `projects.yaml` schema: path, remote, goal, model, permission_mode, budget (token cap, default 100K and report-only; optional turn limit), status. Local and written by fleet tools; `session_id` and `last_seen_commit` live in `sessions.json`
 - [x] `fleet/server.py`: MCP server exposing `list_projects`, `project_status`, `dispatch`, `get_report`; `dispatch` runs jobs in the background
 - [x] Teams run through the unmodified `claude` CLI headless (`-p --resume --output-format json`), `cwd` = repo, on the claude.ai sign-in (API key variables removed)
@@ -60,6 +65,7 @@ Goal: one PM session can drive one adopted team end to end.
 - [ ] Apply the same ruleset to an adopted repo that lacks it, only when I ask (adoption itself never changes a repo)
 - [ ] `request_pr` / `approve_pr` / `reject_pr`; teams cannot open a PR without approval
 - [ ] `notify_merged` triggers team cleanup (delete merged branch and worktree) per the team's CLAUDE.md
+- [ ] Tier 2 eval — PR approval judgment: given a report that doesn't match its task, the PM rejects it with a reason naming the mismatch
 - [ ] **Exit test:** create otsconsulting, staff its team, run its kickoff task, open and merge its first PR, team cleans up
 
 ## Phase 4 — Visibility and interfaces
@@ -88,6 +94,9 @@ Goal: AIPM can assess an adopted project two ways, independently, and compare th
 - [ ] `eval_create(project, target)` and `eval_run(project)`, in whatever format the repo already uses; a repo with none gets a format proposed first
 - [ ] Eval runs get their own budget class, separate from the per-job token cap
 - [ ] AIPM's own subagents in `.claude/agents/`: `architecture-reviewer`, `eval-author`
+- [ ] Tier 1 eval: `get_report` on a review job withholds the team's report until AIPM's assessment is recorded
+- [ ] Tier 2 eval — review recall: what share of the defects planted in a fixture repo an architecture review finds
+- [ ] Tier 2 eval — independence in substance: the two assessments differ rather than converging trivially
 - [ ] **Exit test:** an architecture review of MonteCarlo runs both ways, the team's report stays withheld until AIPM's assessment is recorded, and the comparison names at least one point of disagreement
 
 ## Phase 7 — Enterprise architecture
@@ -101,4 +110,5 @@ Goal: AIPM reasons about the portfolio, not just the projects in it.
 - [ ] A declined recommendation is recorded in `portfolio/decisions.md` with my reason, so it isn't raised again from scratch
 - [ ] Portfolio north star: set it, and roll each project's north star up against it
 - [ ] An accepted recommendation becomes tasks dispatched to the affected teams, under the usual gates
+- [ ] Tier 2 eval — enterprise architect: an issue planted across two fixture repos is surfaced as a portfolio question
 - [ ] **Exit test:** the enterprise architect answers one portfolio question (for example where eval sets should live) with a recommendation, its cost of change, and my accept-or-decline recorded
